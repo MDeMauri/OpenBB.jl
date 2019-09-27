@@ -13,15 +13,18 @@ end
 
 include("./linear_bounds_propagation.jl")
 include("./gcd.jl")
+include("./sos.jl")
 
 
-function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{Int64,1};
+function preprocess!(node::BBnode, workspace::BBworkspace, varsToCheck::Array{Int64,1};
                      withBoundsPropagation::Bool=true)::Bool
+
+   newUpdatedVars = Array{Int64, 1}
 
    feasible = true
    if withBoundsPropagation
-      if 0 in updatedVars
-          feasible = process_gcd!(
+      if 0 in varsToCheck
+          feasible = preprocess_gcd!(
              get_linearConstraints(workspace.problem.cnsSet),
              node.cnsLoBs, node.cnsUpBs,
              node.varLoBs, node.varUpBs,
@@ -31,12 +34,29 @@ function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{In
 
       if feasible
           feasible, updatedVars = OpenBB.bounds_propagation!(
-               node,
-               get_linearConstraints(workspace.problem.cnsSet),
-               workspace.problem.varSet.dscIndices,
-               updatedVars
+            node,
+            get_linearConstraints(workspace.problem.cnsSet),
+            workspace.problem.varSet.dscIndices,
+            varsToCheck
           )
+          newUpdatedVars = unique(vcat(newUpdatedVars, updatedVars))
       end
+
+      if false
+          # As we branch on sos1, it is not worth to do this!
+          feasible, updatedVars = preprocess_sos1!(
+            varsToCheck,
+            get_sos1Groups(workspace),
+            workspace.problem.varSet.dscIndices,
+            node.varLoBs, node.varUpBs
+          )
+          newUpdatedVars = unique(vcat(newUpdatedVars, updatedVars))
+      end
+
+      # TO FIX
+      # if feasible
+      #     feasible = preprocess!(node, workspace, newUpdatedVars, withBoundsPropagation)
+      # end
    end
 
    return feasible
