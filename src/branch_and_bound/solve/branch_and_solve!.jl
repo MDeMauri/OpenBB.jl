@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T15:09:57+02:00
+# @Last modified time: 2019-10-16T22:55:40+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -89,13 +89,13 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBn
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
         @. children[1].varLoBs[workspace.problem.varSet.dscIndices[sos1Group[1:2:end]]] = 0.
         @. children[1].varUpBs[workspace.problem.varSet.dscIndices[sos1Group[1:2:end]]] = 0.
         @. children[1].primal[workspace.problem.varSet.dscIndices[sos1Group[1:2:end]]] = 0.
 
         # second child
-        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
         @. children[2].varLoBs[workspace.problem.varSet.dscIndices[sos1Group[2:2:end]]] = 0.
         @. children[2].varUpBs[workspace.problem.varSet.dscIndices[sos1Group[2:2:end]]] = 0.
         @. children[2].primal[workspace.problem.varSet.dscIndices[sos1Group[2:2:end]]] = 0.
@@ -114,12 +114,12 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBn
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
         children[1].primal[branchIndex] = ceil(node.primal[branchIndex]-workspace.settings.primalTolerance)
         children[1].varLoBs[branchIndex] = children[1].primal[branchIndex]
 
         # second child
-        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual))
+        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
         children[2].primal[branchIndex] = floor(node.primal[branchIndex]+workspace.settings.primalTolerance)
         children[2].varUpBs[branchIndex] = children[2].primal[branchIndex]
 

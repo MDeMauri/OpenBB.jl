@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBworkspace.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T13:20:16+02:00
+# @Last modified time: 2019-10-16T22:31:13+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -42,7 +42,7 @@ function BBroot(workspace::BBworkspace)::BBnode
 
     return BBnode(copy(varBounds[1]),copy(varBounds[2]),
                   copy(cnsBounds[1]),copy(cnsBounds[2]),
-                  zeros(numVars),zeros(numVars),zeros(numCnss))
+                  zeros(numVars),zeros(numVars),zeros(numCnss),0)
 end
 
 # construct the root node for a problem of the given dimensions (with primal initialization)
@@ -54,5 +54,5 @@ function BBroot(workspace::BBworkspace,primal::Array{Float64,1})::BBnode
 
     return BBnode(copy(varBounds[1]),copy(varBounds[2]),
                   copy(cnsBounds[1]),copy(cnsBounds[2]),
-                  copy(primal),zeros(numVars),zeros(numCnss))
+                  copy(primal),zeros(numVars),zeros(numCnss),0)
 end

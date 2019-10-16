@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T20:17:39+02:00
+# @Last modified time: 2019-10-16T23:32:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -12,7 +12,7 @@
 # this function returns the size of a flat representation of a node
 function flat_size(numVars::Int,numCnss::Int)::Int
     return 3 +            # header
-           5 +            # average fractionality + objective + objective gap + pseudo-objective + reliable
+           6 +            # average fractionality + objective + objective gap + pseudo-objective + reliable + version
            4*numVars +    # variable bounds + primal + bound_dual
            3*numCnss      # constraints bounds + constraints_dual
 end
@@ -50,7 +50,8 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     destinationArray[offset+3] = node.objGap
     destinationArray[offset+4] = node.pseudoObjective
     destinationArray[offset+5] = node.reliable
-    offset += 5
+    destinationArray[offset+6] = node.version
+    offset += 6
 
     # bounds
     @. destinationArray[offset+1:offset+numVars] = node.varLoBs; offset+=numVars
@@ -118,7 +119,8 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         objGap          = flatRepresentation[offset+3]
         pseudoObjective = flatRepresentation[offset+4]
         reliable        = Bool(flatRepresentation[offset+5])
-        offset += 5
+        version         = Int(flatRepresentation[offset+6])
+        offset += 6
 
         # bounds
         varLoBs = flatRepresentation[offset+1:offset+numVars]; offset += numVars
@@ -133,7 +135,7 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         bndDual = flatRepresentation[offset+1:offset+numVars]; offset += numVars
         cnsDual = flatRepresentation[offset+1:offset+numCnss]; offset += numCnss
 
-        return BBnode(varLoBs,varUpBs,cnsLoBs,cnsUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,objGap,pseudoObjective,reliable)
+        return BBnode(varLoBs,varUpBs,cnsLoBs,cnsUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,objGap,pseudoObjective,reliable,version)
 
     elseif flatRepresentation[offset+1] == -1.0
         return KillerNode(flatRepresentation[offset+2])
