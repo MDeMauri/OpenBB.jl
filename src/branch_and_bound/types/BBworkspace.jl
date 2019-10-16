@@ -25,6 +25,8 @@ mutable struct BBworkspace{T1,T2,T3} <: AbstractWorkspace where T1<:Problem wher
     solutionPool::Array{BBnode,1}
     unactivePool::Array{BBnode,1}
     status::BBstatus
+    # nodes updates register
+    updatesRegister::BBupdatesRegister
     # user settings
     settings::BBsettings
     # workspace status

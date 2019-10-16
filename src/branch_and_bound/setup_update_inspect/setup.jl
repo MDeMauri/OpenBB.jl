@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T23:15:29+02:00
+# @Last modified time: 2019-10-16T23:13:17+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,27 +28,25 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 	numCnss = get_numConstraints(problem)
 	numDscVars = get_numDiscreteVariables(problem)
 
-	localProblem = deepcopy(problem)
 
-	if bbSettings.numProcesses == 1	# single-process setup
+
+	if bbSettings.numProcesses == 1 # single process setup
 
 		# construct the master BBworkspace
-		workspace = BBworkspace(localProblem,
-							    setup(localProblem,ssSettings,
-									  bb_primalTolerance=bbSettings.primalTolerance,
-									  bb_timeLimit=bbSettings.timeLimit),
-								NullSharedMemory(),
-								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
-								BBstatus(),bbSettings,false)
+		localProblem = deepcopy(problem)
+		workspace = BBworkspace(localProblem,setup(localProblem,ssSettings,
+											  bb_primalTolerance=bbSettings.primalTolerance,
+											  bb_timeLimit=bbSettings.timeLimit),
+								NullSharedMemory(),Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
+								BBstatus(),BBupdatesRegister(),bbSettings,false)
 
 		# build the root node and solve it
 		push!(workspace.activeQueue,BBroot(workspace))
-        if preprocess!(workspace.activeQueue[1],workspace,[0],
-                       withBoundsPropagation=workspace.settings.withBoundsPropagation)
-            solve_node!(workspace.activeQueue[1],workspace)
-        else
-            workspace.activeQueue[1].objVal = Inf
-        end
+		if preprocess!(workspace.activeQueue[1],workspace,[0],withBoundsPropagation=workspace.settings.withBoundsPropagation)
+			solve_node!(workspace.activeQueue[1],workspace)
+		else
+			workspace.activeQueue[1].objVal = Inf
+		end
 		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs
@@ -61,7 +59,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 			addprocs(bbSettings.numProcesses - nprocs())
 		end
 
-		# send load OpenBB in the workers global scope
+		# load OpenBB in the workers global scope
 		@everywhere Main.eval(:(using OpenBB))
 		workersList = workers()[1:bbSettings.numProcesses-1]
 
@@ -77,13 +75,26 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		arrestable = SharedArray{Bool,1}(repeat([false],bbSettings.numProcesses))
 
 		# construct the master BBworkspace
-		workspace = BBworkspace(localProblem,
-								setup(localProblem,ssSettings,
-									  bb_primalTolerance=bbSettings.primalTolerance,
-									  bb_timeLimit=bbSettings.timeLimit),
-							    BBsharedMemory(communicationChannels[1],communicationChannels[2],objectiveBounds,stats,arrestable),
+		localProblem = deepcopy(problem)
+		workspace = BBworkspace(localProblem,setup(localProblem,ssSettings,
+											  bb_primalTolerance=bbSettings.primalTolerance,
+											  bb_timeLimit=bbSettings.timeLimit),
+								BBsharedMemory(communicationChannels[1],communicationChannels[2],
+											   objectiveBounds,stats,arrestable),
 								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
-								BBstatus(),bbSettings,false)
+								BBstatus(),BBupdatesRegister(),bbSettings,false)
+
+		# build the root node and solve it
+		push!(workspace.activeQueue,BBroot(workspace))
+		if preprocess!(workspace.activeQueue[1],workspace,[0],withBoundsPropagation=workspace.settings.withBoundsPropagation)
+			solve_node!(workspace.activeQueue[1],workspace)
+		else
+			workspace.activeQueue[1].objVal = Inf
+		end
+		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
+
+		# initialize the pseudo costs
+		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.problem.varSet.pseudoCosts,workspace.activeQueue[1])
 
 		# construct the remote workspaces
 		expressions = Array{Expr,1}(undef,length(workersList))
@@ -93,30 +104,16 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 			else
 				sharedMemory = BBsharedMemory(communicationChannels[k],communicationChannels[1],objectiveBounds,stats,arrestable)
 			end
-			expressions[k-1] = :(workspace = OpenBB.BBworkspace($localProblem,
-																OpenBB.setup($localProblem,$ssSettings,
-																			 bb_primalTolerance=$(bbSettings.primalTolerance),
-																			 bb_timeLimit=$(bbSettings.timeLimit)),
-																$sharedMemory,
-															    Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),
-															    OpenBB.BBstatus(objLoB=Inf,description="empty"),$bbSettings,false))
+			remoteProblem = deepcopy(workspace.problem)
+			expressions[k-1] = :(workspace = OpenBB.BBworkspace($remoteProblem,OpenBB.setup($remoteProblem,$ssSettings,
+																			 				bb_primalTolerance=$(bbSettings.primalTolerance),
+																			 				bb_timeLimit=$(bbSettings.timeLimit)),
+																$sharedMemory,Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),Array{OpenBB.BBnode,1}(),
+															    OpenBB.BBstatus(objLoB=Inf,description="empty"),OpenBB.BBupdatesRegister(),$bbSettings,false))
 	    end
 
 		@sync for k in 1:length(workersList)
 			@async remotecall_fetch(Main.eval,workersList[k],expressions[k])
-		end
-
-		# build the root node and solve it
-		push!(workspace.activeQueue,BBroot(workspace))
-		solve!(workspace.activeQueue[1],workspace.subsolverWS)
-		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
-
-		# initialize the pseudo costs in the master process
-		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.problem.varSet.pseudoCosts,workspace.activeQueue[1])
-
-		# initialize the pseudoCosts in the remote workers
-		@sync for k in 2:workspace.settings.numProcesses
-			@async remotecall_fetch(Main.eval,k,:(workspace.problem.varSet.pseudoCosts[1] .= $(workspace.problem.varSet.pseudoCosts[1]);workspace.problem.varSet.pseudoCosts[2] .= $(workspace.problem.varSet.pseudoCosts[2])))
 		end
 	end
 
