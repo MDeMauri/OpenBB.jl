@@ -177,11 +177,11 @@ function bounds_propagation!(rowsToCheck::Set{Int},
       return true, updatedVars
 end
 
-function bounds_propagation!(node::BBnode, A::SparseMatrixCSC{Float64,Int}, dscIndices::Array{Int64,1}, updatedVars::Array{Int64,1})::Tuple{Bool, Set{Int}}
-      if 0 in updatedVars
+function bounds_propagation!(node::BBnode, A::SparseMatrixCSC{Float64,Int}, dscIndices::Array{Int64,1}, varsToCheck::Array{Int64,1})::Tuple{Bool, Set{Int}}
+      if 0 in varsToCheck
             rows = Set(1:size(A)[1])
       else
-            rows = Set(unique(findnz(A[1:end,collect(updatedVars)])[1]))
+            rows = Set(unique(findnz(A[1:end,collect(varsToCheck)])[1]))
       end
 
       return bounds_propagation!(rows,

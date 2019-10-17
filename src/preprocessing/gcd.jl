@@ -1,7 +1,7 @@
 # @Author: Wim Van Roy
 # @Date:   Mi Sep 25 14:26:39 CEST 2019
 # @Email:  wim.vanroy@kuleuven.be
-# @Filename: preprocessing.jl
+# @Filename: gcd.jl
 # @Last modified by:   massimo
 # @Last modified time: Mi Sep 25 14:26:54 CEST 2019
 # @License: LGPL-3.0
@@ -9,7 +9,7 @@
 
 
 # Perform Greates Common Divider Update
-function process_gcd!( A::SparseMatrixCSC{Float64,Int},
+function preprocess_gcd!( A::SparseMatrixCSC{Float64,Int},
                             cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
                             varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
                             dscIndices::Array{Int64,1})::Bool

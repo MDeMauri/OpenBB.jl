@@ -13,15 +13,19 @@ end
 
 include("./linear_bounds_propagation.jl")
 include("./gcd.jl")
+include("./sos.jl")
 
 
-function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{Int64,1};
+function preprocess!(node::BBnode, workspace::BBworkspace, varsToCheck::Array{Int64,1};
                      withBoundsPropagation::Bool=true)::Bool
+
+   newUpdatedVars::Array{Int64, 1} = []
 
    feasible = true
    if withBoundsPropagation
-      if 0 in updatedVars
-          feasible = process_gcd!(
+      # Check gcd on startup
+      if 0 in varsToCheck
+          feasible = preprocess_gcd!(
              get_linearConstraints(workspace.problem.cnsSet),
              node.cnsLoBs, node.cnsUpBs,
              node.varLoBs, node.varUpBs,
@@ -29,12 +33,33 @@ function preprocess!(node::BBnode, workspace::BBworkspace, updatedVars::Array{In
           )
       end
 
+      # Check bounds propagation always
       if feasible
           feasible, updatedVars = OpenBB.bounds_propagation!(
-               node,
-               get_linearConstraints(workspace.problem.cnsSet),
-               workspace.problem.varSet.dscIndices,
-               updatedVars
+            node,
+            get_linearConstraints(workspace.problem.cnsSet),
+            workspace.problem.varSet.dscIndices,
+            varsToCheck
+          )
+          union!(newUpdatedVars, collect(updatedVars))
+      end
+
+      # Check SOS1 constraints
+      if feasible
+          feasible, updatedVars = preprocess_sos1!(
+            newUpdatedVars,
+            get_sos1Groups(workspace),
+            workspace.problem.varSet.dscIndices,
+            node.varLoBs, node.varUpBs
+          )
+          union!(newUpdatedVars, collect(updatedVars))
+      end
+
+       # Recursively do the new updated variables
+      if feasible && length(newUpdatedVars) > 0
+          feasible = preprocess!(
+             node, workspace, newUpdatedVars,
+             withBoundsPropagation=withBoundsPropagation
           )
       end
    end
