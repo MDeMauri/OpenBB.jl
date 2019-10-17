@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T23:02:33+02:00
+# @Last modified time: 2019-10-17T11:57:58+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -211,6 +211,7 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
             end
 
             if isready(workspace.sharedMemory.inputChannel)
+
                 if idle
                     # undeclare the worker ready to stop
                     workspace.sharedMemory.arrestable[processId] = false
@@ -221,21 +222,27 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
                 # take a new node from the input channel
                 newNode = take!(workspace.sharedMemory.inputChannel;timeout=communicationTimeout)
 
-                # insert the new node in the active queue
-                if newNode.objVal - newNode.objGap < workspace.status.objUpB - workspace.settings.primalTolerance
-                    insert_node!(workspace.activeQueue,newNode,workspace.settings,workspace.status)
-                end
-
-                # update the objective lower bound
-                if newNode.objVal-newNode.objGap < workspace.status.objLoB
-                    workspace.status.objLoB = newNode.objVal-newNode.objGap
-                    # recompute optimality gaps
-                    if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
-                        workspace.status.absoluteGap = workspace.status.relativeGap = Inf
-                    else
-                        workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                        workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
+                # if the new node is a branch and bound node insert it in the active queue
+                if newNode isa BBnode
+                    if newNode.objVal - newNode.objGap < workspace.status.objUpB - workspace.settings.primalTolerance
+                        insert_node!(workspace.activeQueue,newNode,workspace.settings,workspace.status)
                     end
+
+                    # update the objective lower bound
+                    if newNode.objVal-newNode.objGap < workspace.status.objLoB
+                        workspace.status.objLoB = newNode.objVal-newNode.objGap
+                        # recompute optimality gaps
+                        if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                            workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                        else
+                            workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                            workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
+                        end
+                    end
+                elseif newNode isa KillerNode
+                    # terminate the process going idle and terminable
+                    idle = true
+                    workspace.sharedMemory.arrestable[processId] = true
                 end
             end
 
@@ -262,6 +269,11 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
                 workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
             end
         end
+    end
+
+    # obstruct the input channel to avoid further node sendings
+    if !(workspace.sharedMemory isa NullSharedMemory)
+        put!(workspace.sharedMemory.inputChannel,NullBBnode())
     end
 
     return

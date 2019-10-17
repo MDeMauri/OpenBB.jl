@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-16T23:13:17+02:00
+# @Last modified time: 2019-10-17T12:00:01+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -67,6 +67,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
 		for k in 1:bbSettings.numProcesses
 			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss))
+            # obstruct the communication channels until the receiving worker is ready
+			put!(communicationChannels[k],NullBBnode())
 		end
 
 		# construct shared Memory
