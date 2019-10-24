@@ -4,13 +4,18 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-17T11:57:58+02:00
+# @Last modified time: 2019-10-24T16:17:56+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 # branch and bound algorithm
 function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
+
+    # temporary, to remove...
+    @. update!(workspace.activeQueue,[workspace.updatesRegister])
+    @. update!(workspace.unactivePool,[workspace.updatesRegister])
+    @. update!(workspace.solutionPool,[workspace.updatesRegister])
 
     # timing
     lastTimeCheckpoint = time()
@@ -114,7 +119,6 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
 
            # pick a node to process from the activeQueue
            node = pop!(workspace.activeQueue)
-
 
             if node.objVal > workspace.status.objUpB - workspace.settings.primalTolerance # the node is already suboptimal (the upper-bound might have changed)
 

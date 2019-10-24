@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T23:18:53+02:00
+# @Last modified time: 2019-10-23T15:06:37+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -83,8 +83,8 @@ function update!(workspace::BBworkspace{T1,T2,T3};localOnly::Bool=false)::Nothin
 		# adapt the node pools to the changes (the solutions go on top of all)
 		splice!(workspace.activeQueue,1:0,workspace.solutionPool)
 		append!(workspace.activeQueue,workspace.unactivePool)
-		workspace.solutionPool = BBnode[]
-		workspace.unactivePool = BBnode[]
+		empty!(workspace.solutionPool)
+		empty!(workspace.unactivePool)
 
 		sort!(workspace.activeQueue,alg=MergeSort,rev=true,
 			  lt=(l,r)->expansion_priority_rule(workspace.settings.expansionPriorityRule,l,r,workspace.status))

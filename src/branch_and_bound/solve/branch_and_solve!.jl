@@ -3,11 +3,18 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-16T22:55:40+02:00
+# @Last modified time: 2019-10-24T16:14:42+02:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array{BBnode,1} where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
+
+    # update the node to the latest version
+    nodeJustUpdated = false
+    if node.version < workspace.updatesRegister.masterVersion
+        nodeJustUpdated = true
+        update!(node,workspace.updatesRegister)
+    end
 
     # create a list of children
     if node.avgAbsFrac == 0.0 || isnan(node.objVal)
@@ -27,7 +34,7 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
         end
 
         # update pseudoCosts
-        if branchIndices_dsc[k]>0 && children[k].reliable && children[k].objVal < Inf
+        if !nodeJustUpdated && branchIndices_dsc[k]>0 && children[k].reliable && children[k].objVal < Inf
 
             # compute objective and primal variation
             deltaObjective = max(children[k].objVal-node.objVal,workspace.settings.primalTolerance) # the max filters out small numerical errors
@@ -48,7 +55,6 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
                 workspace.problem.varSet.pseudoCosts[2][branchIndices_dsc[k],2] += 1
             end
         end
-
     end
 
     # return the solved children
