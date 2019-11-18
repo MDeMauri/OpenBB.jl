@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-23T14:12:55+02:00
+# @Last modified time: 2019-11-18T11:37:23+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -294,6 +294,42 @@ function integralize_variables!(workspace::BBworkspace{T1,T2,T3},newDscIndices::
 
     return
 end
+
+
+#
+function fix_variables!(workspace::BBworkspace{T1,T2,T3},indices::Array{Int,1};values::Array{Float64,1},
+                                suppressWarnings::Bool=false,localOnly::Bool=false)::Nothing where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
+
+	# check the correctness of the input
+	@assert length(newSos1Groups) == 0 || length(newSos1Groups) == length(newDscIndices)
+
+    @sync if !localOnly && !(workspace.sharedMemory isa NullSharedMemory)
+        # call the local version of the function on the remote workers
+        for p in 2:workspace.settings.numProcesses
+            @async remotecall_fetch(Main.eval,p,:(
+				OpenBB.fix_variables!(workspace,$newDscIndices,newSos1Groups=$newSos1Groups,suppressWarnings=true,localOnly=true)
+			))
+        end
+
+        # call the local version of the function on the main process
+        fix_variables!(workspace,newDscIndices,newSos1Groups=newSos1Groups,suppressWarnings=suppressWarnings,localOnly=true)
+
+    else
+
+        if !suppressWarnings && workspace.status.description != "new" && !workspace.settings.interactiveMode && myid() == 1
+			# check if it is possible to make changes
+			@warn "In order to correctly manipulate the problem formulation, OpenBB must be run in interactive mode"
+		end
+
+        # propagate the changes to the nodes
+		push!(workspace.updatesRegister,fix_variables!,(copy(indices),values,workspace.settings.primalTolerance))
+
+    end
+
+    return
+end
+
+
 
 
 # for debug... remove this stuff
