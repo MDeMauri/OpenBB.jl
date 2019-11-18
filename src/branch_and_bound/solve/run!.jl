@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-24T16:17:56+02:00
+# @Last modified time: 2019-11-15T17:49:27+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -13,9 +13,9 @@
 function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 
     # temporary, to remove...
-    @. update!(workspace.activeQueue,[workspace.updatesRegister])
-    @. update!(workspace.unactivePool,[workspace.updatesRegister])
-    @. update!(workspace.solutionPool,[workspace.updatesRegister])
+    # @. update!(workspace.activeQueue,[workspace.updatesRegister])
+    # @. update!(workspace.unactivePool,[workspace.updatesRegister])
+    # @. update!(workspace.solutionPool,[workspace.updatesRegister])
 
     # timing
     lastTimeCheckpoint = time()
