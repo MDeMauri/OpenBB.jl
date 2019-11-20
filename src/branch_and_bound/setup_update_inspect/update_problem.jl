@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-18T11:37:23+01:00
+# @Last modified time: 2019-11-20T14:38:21+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -73,7 +73,7 @@ function remove_constraints!(workspace::BBworkspace{T1,T2,T3},indices::Array{Int
 
 		## check if it is possible to make changes
 		if !suppressWarnings && workspace.status.description != "new"
-			@warn "Removing constraints after some iterations is potentially destructive, I hope you know what you are doing."
+			@warn "Removing constraints after some iterations is potentially destructive, We hope you know what you are doing."
 		end
 
 		# change the problem definition
@@ -174,7 +174,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2,T3};
 		update_bounds!(workspace.problem.cnsSet,loBs=cnsLoBs,upBs=cnsUpBs)
 
         # propagate the changes to the nodes
-		push!(workspace.updatesRegister,update_bounds!,(copy(varLoBs),copy(varUpBs),copy(cnsLoBs),copy(cnsUpBs)))
+		push!(workspace.updatesRegister,update_bounds!,(copy(varLoBs),copy(varUpBs),copy(cnsLoBs),copy(cnsUpBs),workspace.settings.primalTolerance))
 
 		# mark the workspace as outdated
 		make_outdated!(workspace)

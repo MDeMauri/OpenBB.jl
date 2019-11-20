@@ -3,12 +3,12 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-23T15:06:37+02:00
+# @Last modified time: 2019-11-20T14:38:28+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 # it marks the workspace as outdated
-function make_outdated!(workspace:: BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
+function make_outdated!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 	workspace.outdated = true
 	make_outdated!(workspace.subsolverWS)
 	return

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_node.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-18T11:25:02+01:00
+# @Last modified time: 2019-11-20T14:37:03+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -29,10 +29,14 @@ end
 
 # adapt the node to the insertion of constraints
 function insert_constraints!(node::BBnode,position::Int64,newBounds::Tuple{Array{Float64,1},Array{Float64,1}})::Bool
+	# check input
 	@assert length(newBounds[1]) == length(newBounds[2])
+	# extend bounds
 	splice!(node.cnsDual,position:position-1,zeros(length(newBounds[1])))
     splice!(node.cnsLoBs,position:position-1,copy(newBounds[1]))
+	# extend dual solution
 	splice!(node.cnsUpBs,position:position-1,copy(newBounds[2]))
+	#TODO preprocessing
 	return true
 end
 
@@ -46,6 +50,9 @@ end
 
 # changes the constraints order
 function permute_constraints!(node::BBnode,permutation::Array{Int64,1})::Bool
+	# check input
+	@assert length(permutation) == length(node.cnsDual)
+	# permute the constraints bounds and dual solution
 	permute!(node.cnsDual,permutation)
 	permute!(node.cnsLoBs,permutation)
 	permute!(node.cnsUpBs,permutation)
@@ -54,20 +61,43 @@ end
 
 
 # changes variable and constraint bounds in the node
-function update_bounds!(node::BBnode,varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1})::Bool
+function update_bounds!(node::BBnode,varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
+						cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},tolerance::Float64)::Bool
+	# check input
+	@assert tolerance >= 0.0
+	@assert length(varLoBs) == 0 || length(varLoBs) == length(node.varLoBs)
+	@assert length(varUpBs) == 0 || length(varUpBs) == length(node.varUpBs)
+	@assert length(cnsLoBs) == 0 || length(cnsLoBs) == length(node.cnsLoBs)
+	@assert length(cnsUpBs) == 0 || length(cnsUpBs) == length(node.cnsUpBs)
+	# update the bounds
 	if length(varLoBs)>0 @. node.varLoBs = max(node.varLoBs,varLoBs) end
 	if length(varUpBs)>0 @. node.varUpBs = min(node.varUpBs,varUpBs) end
 	if length(cnsLoBs)>0 @. node.cnsLoBs = max(node.cnsLoBs,cnsLoBs) end
 	if length(cnsUpBs)>0 @. node.cnsUpBs = min(node.cnsUpBs,cnsUpBs) end
+	# check the feasibility of new bounds
+	for k in 1:length(node.varLoBs)
+		if node.varLoBs[k] > node.varUpBs[k] + 2*tolerance
+			return false
+		end
+	end
+	for k in 1:length(node.cnsLoBs)
+		if node.cnsLoBs[k] > node.cnsUpBs[k] + 2*tolerance
+			return false
+		end
+	end
+	#TODO preprocessing
 	return true
 end
 
 
 # insert a new set of variables in the node data
 function insert_variables!(node::BBnode,position::Int64,newPrimal::Array{Float64,1},newBounds::Tuple{Array{Float64,1},Array{Float64,1}})::Bool
+	# check input
 	@assert length(newBounds[1]) == length(newBounds[2]) == length(newPrimal)
+	# extend bounds arrays
     splice!(node.varLoBs,position:position-1,copy(newBounds[1]))
     splice!(node.varUpBs,position:position-1,copy(newBounds[2]))
+	# extend primal/dual solutions
 	splice!(node.primal,position:position-1,copy(newPrimal))
 	splice!(node.bndDual,position:position-1,zeros(length(newPrimal)))
 	return true
@@ -76,24 +106,38 @@ end
 
 # rounds the variable bounds (usually because they were marked as integral)
 function round_variable_bounds!(node::BBnode,indices::Array{Int64,1},tolerance::Float64)::Bool
+	# check inputs
+	@assert tolerance >= 0.0
+	# round bounds
 	@. node.varLoBs[indices] =  ceil(node.varLoBs[indices]-tolerance)
 	@. node.varUpBs[indices] = floor(node.varUpBs[indices]+tolerance)
+	# center primal solution
+	@. node.primal = min(max(node.primal,node.varLoBs),node.varUpBs)
+	# check the feasibility of new bounds
+	for k in 1:length(node.varLoBs)
+		if node.varLoBs[k] > node.varUpBs[k] + 2*tolerance
+			return false
+		end
+	end
+	#TODO preprocessing
 	return true
 end
 
 
 # fix value of the given variables to the given assignment
 function fix_variables!(node::BBnode,indices::Array{Int,1},values::Array{Float64,1},tolerance::Float64)::Bool
-
-	# check if the assignment is feasible for the node
-	for i in indices
-		if !(node.varLoBs[i]-tolerance < values[i] < node.varUpBs[i] + tolerance)
+	# check input
+	@assert tolerance >= 0.0
+	@assert length(indices) == length(values)
+	# check if the new assignment is feasible and fix values
+	for (k,i) in enumerate(indices)
+		node.varLoBs[i] = max(node.varLoBs[i],values[k])
+		node.varUpBs[i] = min(node.varUpBs[i],values[k])
+		node.primal[i] = values[k]
+		if node.varLoBs[i] > node.varUpBs[i] + 2*tolerance
 			return false
 		end
 	end
-	# fix values
-	@. node.varLoBs[indices] = max(node.varLoBs[indices],values)
-	@. node.varUpBs[indices] = min(node.varUpBs[indices],values)
-	@. node.primal[indices] = values
+	#TODO preprocessing
 	return true
 end
