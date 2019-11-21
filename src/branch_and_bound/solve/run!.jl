@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-15T17:49:27+01:00
+# @Last modified time: 2019-11-21T10:54:17+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -57,77 +57,82 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
 
         # print algorithm status
         if workspace.settings.verbose && processId == 1
-           if printCountdown <= 0
-               print_status(workspace)
-               printCountdown = workspace.settings.statusInfoPeriod
-          end
+            if printCountdown <= 0
+                print_status(workspace)
+                printCountdown = workspace.settings.statusInfoPeriod
+            end
         end
 
         # stopping conditions
         if length(workspace.activeQueue) == 0 || # no more nodes in the queue
-           workspace.status.objLoB > workspace.settings.objectiveCutoff || # no solutions within the cutoff possible
-           workspace.status.totalTime >= workspace.settings.timeLimit || # time is up
-           workspace.settings.customStoppingRule(workspace) || # custom stopping rule triggered
-           workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance || # reached required absolute gap
-           workspace.status.relativeGap < workspace.settings.relativeGapTolerance || # reached required relative gap
-           (workspace.settings.numSolutionsLimit > 0 && workspace.status.numSolutions >= workspace.settings.numSolutionsLimit) # the required number of solutions has been found
+            workspace.status.objLoB > workspace.settings.objectiveCutoff || # no solutions within the cutoff possible
+            workspace.status.totalTime >= workspace.settings.timeLimit || # time is up
+            workspace.settings.customStoppingRule(workspace) || # custom stopping rule triggered
+            workspace.status.absoluteGap < workspace.settings.absoluteGapTolerance || # reached required absolute gap
+            workspace.status.relativeGap < workspace.settings.relativeGapTolerance || # reached required relative gap
+            (workspace.settings.numSolutionsLimit > 0 && workspace.status.numSolutions >= workspace.settings.numSolutionsLimit) # the required number of solutions has been found
 
-           # set the algorithm in idle state
-           if workspace.sharedMemory isa NullSharedMemory || !isready(workspace.sharedMemory.outputChannel)
-               idle = true
-           end
+            # set the algorithm in idle state
+            if workspace.sharedMemory isa NullSharedMemory || !isready(workspace.sharedMemory.outputChannel)
+                idle = true
+            end
 
-       else # continue with branch and bound
+        else # continue with branch and bound
 
-           # apply rounding heuristics
-           if workspace.activeQueue[end].avgAbsFrac > 0 &&
-              workspace.activeQueue[end].avgAbsFrac < workspace.settings.roundingHeuristicsThreshold &&
-              (workspace.activeQueue[end].objVal-workspace.status.objLoB)/(1e-10 + workspace.activeQueue[end].objVal) < workspace.settings.roundingHeuristicsThreshold
+            # apply rounding heuristics
+            if workspace.activeQueue[end].avgAbsFrac > 0 &&
+                workspace.activeQueue[end].avgAbsFrac < workspace.settings.roundingHeuristicsThreshold &&
+                (workspace.activeQueue[end].objVal-workspace.status.objLoB)/(1e-10 + workspace.activeQueue[end].objVal) < workspace.settings.roundingHeuristicsThreshold
 
-               node = simple_rounding_heuristics(workspace.activeQueue[end],workspace)
-               solve!(node,workspace)
+                node = simple_rounding_heuristics(workspace.activeQueue[end],workspace)
+                solve!(node,workspace)
 
-               # new solution?
-               if node.reliable &&
-                  node.objVal < min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
+                # new solution?
+                if node.reliable &&
+                    node.objVal < min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
 
-                   # insert new solution into the solutionPool
-                   push!(workspace.solutionPool,node)
+                    # insert new solution into the solutionPool
+                    push!(workspace.solutionPool,node)
 
-                   # update the number of solutions found
-                   workspace.status.numSolutions += 1
-                   # update the objective upper bound
-                   workspace.status.objUpB = node.objVal
+                    # update the number of solutions found
+                    workspace.status.numSolutions += 1
+                    # update the objective upper bound
+                    workspace.status.objUpB = node.objVal
 
-                   # update the global objective upper bound and the number of solutions found
-                   if !(workspace.sharedMemory isa NullSharedMemory)
-                       workspace.sharedMemory.stats[1] +=1
-                       if workspace.status.objUpB < workspace.sharedMemory.objectiveBounds[end]
-                           workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
-                       end
-                   end
+                    # update the global objective upper bound and the number of solutions found
+                    if !(workspace.sharedMemory isa NullSharedMemory)
+                        workspace.sharedMemory.stats[1] +=1
+                        if workspace.status.objUpB < workspace.sharedMemory.objectiveBounds[end]
+                            workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
+                        end
+                    end
 
-                   # recompute optimality gaps
-                   if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
-                       workspace.status.absoluteGap = workspace.status.relativeGap = Inf
-                   else
-                       workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                       workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
-                   end
-               end
-           end
+                    # recompute optimality gaps
+                    if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                        workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                    else
+                        workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                        workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
+                    end
+                end
+            end
 
-           # pick a node to process from the activeQueue
-           node = pop!(workspace.activeQueue)
+            # pick a node to process from the activeQueue
+            node = pop!(workspace.activeQueue)
 
-            if node.objVal > workspace.status.objUpB - workspace.settings.primalTolerance # the node is already suboptimal (the upper-bound might have changed)
+            # store useful info for node
+            nodeObjVal = deepcopy(node.objVal)
+            nodeObjGap = deepcopy(node.objGap)
+
+            # handle the node
+            if nodeObjVal > workspace.status.objUpB - workspace.settings.primalTolerance # the node is already suboptimal (the upper-bound might have changed)
 
                 # in interactive mode the suboptimal nodes are stored
                 if workspace.settings.interactiveMode
                     push!(workspace.unactivePool,node)
                 end
 
-            elseif node.objVal > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the new node is worse than the user provided cutoff
+            elseif nodeObjVal > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the new node is worse than the user provided cutoff
 
                 # declare the cutoff active
                 workspace.status.cutoffActive = true
@@ -138,8 +143,8 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
                 end
 
             elseif !(workspace.sharedMemory isa NullSharedMemory) && # we are multiprocessing
-                   !isready(workspace.sharedMemory.outputChannel) && # the channel is free
-                   timeToShareNodes # it is time to send a child to the next process
+                !isready(workspace.sharedMemory.outputChannel) && # the channel is free
+                timeToShareNodes # it is time to send a child to the next process
 
                 # send the new node to the neighbouring process
                 put!(workspace.sharedMemory.outputChannel,node;timeout=communicationTimeout)
@@ -165,7 +170,7 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
             end
 
             # recompute the objective lower bound
-            if workspace.status.objLoB == -Inf || node.objVal - node.objGap == workspace.status.objLoB || length(workspace.activeQueue) == 0
+            if workspace.status.objLoB == -Inf || nodeObjVal - nodeObjGap == workspace.status.objLoB || length(workspace.activeQueue) == 0
                 # compute the new lower-bound
                 newObjLoB = workspace.status.objUpB
                 for i in length(workspace.activeQueue):-1:1
@@ -207,7 +212,7 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
 
                 # wait for a message to arrive in the inputChannel
                 while !isready(workspace.sharedMemory.inputChannel) &&
-                      !all(@. workspace.sharedMemory.arrestable)
+                    !all(@. workspace.sharedMemory.arrestable)
                 end
 
                 # keep track of the time spent in waiting

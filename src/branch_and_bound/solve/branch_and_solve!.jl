@@ -3,11 +3,15 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-18T11:07:40+01:00
+# @Last modified time: 2019-11-21T10:51:00+01:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array{BBnode,1} where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
+
+    # store useful info on the node (before they get modified)
+    nodeObjVal = node.objVal
+    nodePrimal = copy(node.primal)
 
     # update the node to the latest version
     nodeJustUpdated = false
@@ -20,7 +24,7 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
 
     # create a list of children
     if node.avgAbsFrac == 0.0 || isnan(node.objVal)
-        children, branchIndices_dsc, presolveIndices = [deepcopy(node)], [0], [0]
+        children, branchIndices_dsc, presolveIndices = [node], [0], [0]
     else
         children, branchIndices_dsc, presolveIndices = branch!(node,workspace)
     end
@@ -39,8 +43,8 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
         if !nodeJustUpdated && branchIndices_dsc[k]>0 && children[k].reliable && children[k].objVal < Inf
 
             # compute objective and primal variation
-            deltaObjective = max(children[k].objVal-node.objVal,workspace.settings.primalTolerance) # the max filters out small numerical errors
-            deltaVariable = children[k].primal[workspace.problem.varSet.dscIndices[branchIndices_dsc[k]]] - node.primal[workspace.problem.varSet.dscIndices[branchIndices_dsc[k]]]
+            deltaObjective = max(children[k].objVal-nodeObjVal,workspace.settings.primalTolerance) # the max filters out small numerical errors
+            deltaVariable = children[k].primal[workspace.problem.varSet.dscIndices[branchIndices_dsc[k]]] - nodePrimal[workspace.problem.varSet.dscIndices[branchIndices_dsc[k]]]
 
             if deltaVariable < -workspace.settings.primalTolerance
 
@@ -97,13 +101,13 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBn
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
+        children[1] = deepcopy(node)
         @. children[1].varLoBs[workspace.problem.varSet.dscIndices[sos1Group[1:2:end]]] = 0.
         @. children[1].varUpBs[workspace.problem.varSet.dscIndices[sos1Group[1:2:end]]] = 0.
         @. children[1].primal[workspace.problem.varSet.dscIndices[sos1Group[1:2:end]]] = 0.
 
         # second child
-        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
+        children[2] = node
         @. children[2].varLoBs[workspace.problem.varSet.dscIndices[sos1Group[2:2:end]]] = 0.
         @. children[2].varUpBs[workspace.problem.varSet.dscIndices[sos1Group[2:2:end]]] = 0.
         @. children[2].primal[workspace.problem.varSet.dscIndices[sos1Group[2:2:end]]] = 0.
@@ -122,13 +126,13 @@ function branch!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Tuple{Array{BBn
         children = Array{BBnode}(undef,2)
 
         # first child
-        children[1] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
-        children[1].primal[branchIndex] = ceil(node.primal[branchIndex]-workspace.settings.primalTolerance)
+        children[1] = deepcopy(node)
+        children[1].primal[branchIndex] = ceil(children[1].primal[branchIndex]-workspace.settings.primalTolerance)
         children[1].varLoBs[branchIndex] = children[1].primal[branchIndex]
 
         # second child
-        children[2] = BBnode(copy(node.varLoBs),copy(node.varUpBs),copy(node.cnsLoBs),copy(node.cnsUpBs),copy(node.primal),copy(node.bndDual),copy(node.cnsDual),node.version)
-        children[2].primal[branchIndex] = floor(node.primal[branchIndex]+workspace.settings.primalTolerance)
+        children[2] = node
+        children[2].primal[branchIndex] = floor(children[2].primal[branchIndex]+workspace.settings.primalTolerance)
         children[2].varUpBs[branchIndex] = children[2].primal[branchIndex]
 
         return children, [branchIndex_dsc,branchIndex_dsc], [branchIndex_dsc]
