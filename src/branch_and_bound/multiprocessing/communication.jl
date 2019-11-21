@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: communication.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T23:06:35+02:00
+# @Last modified time: 2019-11-21T14:13:19+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -23,7 +23,7 @@ end
 import Base.put!
 function put!(channel::BBnodeChannel,node::T;timeout::Float64=Inf)::Nothing where T <: AbstractBBnode
 
-    # wait for the channel to be unlocked and free
+    # wait for the channel to be empty and unlocked
     startTime = time()
     while true
         if time() - startTime > timeout
@@ -56,7 +56,7 @@ end
 import Base.take!
 function take!(channel::BBnodeChannel;timeout::Float64=Inf)
 
-    # wait if the memory space for the process is free or locked
+    # wait for the process to be full and unlocked
     startTime = time()
     while true
         if time()-startTime>timeout

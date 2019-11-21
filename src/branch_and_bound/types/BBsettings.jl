@@ -40,7 +40,7 @@ mutable struct BBsettings <: AbstractSettings
 	# algorithm modifiers
 	optimalControlMode::Bool				# enables some optimal-control-specific rutines
 	acceptUnreliableSolutions::Bool			# consider solutions also in case of unreliability
-	maxNumberOflocalCuts::Int				# Each node carries around this number of cuts to improve the relaxations
+	maxNumberOfLocalCuts::Int				# Each node carries around this number of cuts to improve the relaxations
 end
 
 
@@ -64,7 +64,7 @@ function BBsettings(;verbose::Bool=false,
 					 withBoundsPropagation::Bool=false,
 					 optimalControlMode::Bool=false,
 					 acceptUnreliableSolutions::Bool=false,
-					 maxNumberOflocalCuts::Int=5
+					 maxNumberOfLocalCuts::Int=5
                      )::BBsettings
 
 
@@ -80,5 +80,5 @@ function BBsettings(;verbose::Bool=false,
                       pseudoCostsInitialization,customStoppingRule,
                       timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,
 					  roundingHeuristicsThreshold,withBoundsPropagation,
-					  optimalControlMode,acceptUnreliableSolutions,maxNumberOflocalCuts)
+					  optimalControlMode,acceptUnreliableSolutions,maxNumberOfLocalCuts)
 end
