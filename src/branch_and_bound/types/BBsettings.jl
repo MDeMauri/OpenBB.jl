@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBsettings.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-26T12:46:44+02:00
+# @Last modified time: 2019-11-20T15:45:53+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -38,7 +38,9 @@ mutable struct BBsettings <: AbstractSettings
 	# preprocessing
 	withBoundsPropagation::Bool
 	# algorithm modifiers
+	optimalControlMode::Bool				# enables some optimal-control-specific rutines
 	acceptUnreliableSolutions::Bool			# consider solutions also in case of unreliability
+	maxNumberOflocalCuts::Int				# Each node carries around this number of cuts to improve the relaxations
 end
 
 
@@ -60,7 +62,9 @@ function BBsettings(;verbose::Bool=false,
                      relativeGapTolerance::Float64=1e-6,
                      roundingHeuristicsThreshold::Float64 = -1.,
 					 withBoundsPropagation::Bool=false,
-					 acceptUnreliableSolutions::Bool=false
+					 optimalControlMode::Bool=false,
+					 acceptUnreliableSolutions::Bool=false,
+					 maxNumberOflocalCuts::Int=5
                      )::BBsettings
 
 
@@ -75,5 +79,6 @@ function BBsettings(;verbose::Bool=false,
                       expansionPriorityRule,branchingPriorityRule,unreliablesPriority,
                       pseudoCostsInitialization,customStoppingRule,
                       timeLimit,numSolutionsLimit,absoluteGapTolerance,relativeGapTolerance,
-					  roundingHeuristicsThreshold,withBoundsPropagation,acceptUnreliableSolutions)
+					  roundingHeuristicsThreshold,withBoundsPropagation,
+					  optimalControlMode,acceptUnreliableSolutions,maxNumberOflocalCuts)
 end

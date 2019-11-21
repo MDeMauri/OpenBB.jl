@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-27T18:14:20+02:00
+# @Last modified time: 2019-11-20T15:48:08+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -40,60 +40,57 @@ end
 
 
 # inspect functions (Fundamental. Those are used in Branch and Bound)
-function get_numVariables(constraintSet::LinearConstraintSet)::Int
+function get_numVariables(constraintSet::LinearConstraintSet)::Int where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return size(constraintSet.A,2)
 end
 
-function get_size(constraintSet::LinearConstraintSet)::Int
+function get_size(constraintSet::LinearConstraintSet)::Int where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return size(constraintSet.A,1)
 end
 
-function get_bounds(constraintSet::LinearConstraintSet)::Tuple{Array{Float64,1},Array{Float64,1}}
+function get_bounds(constraintSet::LinearConstraintSet)::Tuple{Array{Float64,1},Array{Float64,1}} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return (constraintSet.loBs,constraintSet.upBs)
 end
 
 
-function get_sparsity(constraintSet::LinearConstraintSet)::Tuple{Array{Int,1},Array{Int,1}}
+function get_sparsity(constraintSet::LinearConstraintSet{T})::Tuple{Array{Int,1},Array{Int,1}} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return findnz(sparse(constraintSet.A))[1:2]
 end
 
-function get_sparsity(constraintSet::LinearConstraintSet,index::Int)::Array{Int,1}
+function get_sparsity(constraintSet::LinearConstraintSet{T},index::Int)::Array{Int,1} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return findnz(sparse(constraintSet.A[index,:]))[1]
 end
 
-function get_firstNZs(constraintSet::LinearConstraintSet)::Array{Int,1}
-    out = Array{Int,1}(undef,size(constraintSet.A,1))
-    for k in 1:length(out)
-        try
-            out[k] = findfirst(!iszero,constraintSet.A[k,:])
-        catch
-            out[k] = -1
-        end
+function get_firstNZs(constraintSet::LinearConstraintSet,dimension::Int)::Array{Int,1} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    @assert 0 < dimension <= 2
+    return findFirstNZs(constraintSet.A,dimension)
+end
+
+function get_firstNZs(constraintSet::LinearConstraintSet,indices::Array{Int,1},dimension::Int)::Array{Int,1} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    @assert 0 < dimension <= 2
+    if dimension == 1
+        return findFirstNZs(constraintSet.A[:,indices],dimension)
+    else
+        return findFirstNZs(constraintSet.A[indices,:],dimension)
     end
-    return out
 end
 
-function get_firstNZ(constraintSet::LinearConstraintSet,index::Int)::Int
-    return findfirst(!iszero,constraintSet.A[index,:])
+function get_lastNZs(constraintSet::LinearConstraintSet{T},dimension::Int)::Array{Int,1} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    @assert 0 < dimension <= 2
+    return findLastNZs(constraintSet.A,dimension)
 end
 
-function get_lastNZs(constraintSet::LinearConstraintSet)::Array{Int,1}
-    out = Array{Int,1}(undef,size(constraintSet.A,1))
-    for k in 1:length(out)
-        try
-            out[k] = findlast(!iszero,constraintSet.A[k,:])
-        catch
-            out[k] = -1
-        end
+function get_lastNZs(constraintSet::LinearConstraintSet,indices::Array{Int,1},dimension::Int)::Array{Int,1} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    @assert 0 < dimension <= 2
+    if dimension == 1
+        return findLastNZs(constraintSet.A[:,indices],dimension)
+    else
+        return findLastNZs(constraintSet.A[indices,:],dimension)
     end
-    return out
 end
 
-function get_lastNZ(constraintSet::LinearConstraintSet,index::Int)::Int
-    return findlast(!iszero,constraintSet.A[index,:])
-end
 
-function get_linearConstraints(constraintSet::LinearConstraintSet)::Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+function get_linearConstraints(constraintSet::LinearConstraintSet{T})::T where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     return constraintSet.A
 end
 

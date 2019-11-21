@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: numerical_utilities.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-12T19:10:57+02:00
+# @Last modified time: 2019-11-20T15:29:41+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -57,4 +57,55 @@ function clip(number::T1,threshold::T2)::T1 where T1 <: Real where T2 <: Real
     else
         return threshold
     end
+end
+
+
+
+function findFirstNZs(A::Union{Array{T,1},SparseMatrixCSC{T,Int}},dimension::Int)::Array{Int,1} where T <: Number
+    @assert dimension <= 2
+    if dimension == 1
+        out = Array{Int,1}(undef,size(A,2))
+        for k in 1:length(out)
+            try
+                out[k] = findfirst(!iszero,A[:,k])
+            catch
+                out[k] = -1
+            end
+        end
+    else
+        out = Array{Int,1}(undef,size(A,1))
+        for k in 1:length(out)
+            try
+                out[k] = findfirst(!iszero,A[k,:])
+            catch
+                out[k] = -1
+            end
+        end
+    end
+    return out
+end
+
+
+function findLastNZs(A::Union{Array{T,1},SparseMatrixCSC{T,Int}},dimension::Int)::Array{Int,1} where T <: Number
+    @assert dimension <= 2
+    if dimension == 1
+        out = Array{Int,1}(undef,size(A,2))
+        for k in 1:length(out)
+            try
+                out[k] = findlast(!iszero,A[:,k])
+            catch
+                out[k] = -1
+            end
+        end
+    else
+        out = Array{Int,1}(undef,size(A,1))
+        for k in 1:length(out)
+            try
+                out[k] = findlast(!iszero,A[k,:])
+            catch
+                out[k] = -1
+            end
+        end
+    end
+    return out
 end
