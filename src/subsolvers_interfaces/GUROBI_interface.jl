@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-27T17:19:38+02:00
+# @Last modified time: 2019-11-22T12:56:43+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -145,26 +145,53 @@ end
 ## Solve ##########################################################
 function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
 
-    # update the gurobi model
-    numVars = get_numVariables(workspace.problem)
-    numCnss = get_numConstraints(workspace.problem)
+	# collect info on the problem
+	numVars = get_numVariables(workspace.problem)
+	numCnss = get_numConstraints(workspace.problem)
 
-    # create a Gurobi environment
-    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(workspace.problem.cnsSet)
-    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
-    model = Gurobi.gurobi_model(workspace.environment,H = objFun.Q,
-                                                      f = objFun.L,
-                                                      A = vcat(-cnsSet.A,cnsSet.A),
-                                                      b = vcat(-node.cnsLoBs,node.cnsUpBs),
-                                                      lb = node.varLoBs,
-                                                      ub = node.varUpBs)
+    # check if local cuts are present
+    if nnz(node.cuts) > 0 # there are some local cuts
 
-    Gurobi.update_model!(model)
+        # construct a temporary problem definition (to accomodate the cuts)
+        tmpProblem = deepcopy(workspace.problem)
+        append!(tmpProblem.cnsSet,node.cuts)
+		update_bounds!(tmpProblem.varSet,loBs=node.varLoBs,upBs=node.varUpBs)
+		update_bounds!(tmpProblem.cnsSet,collect(1:length(node.cnsLoBs)),loBs=node.cnsLoBs,upBs=node.cnsLoBs)
 
-    # solve problem
-    runtime = @elapsed Gurobi.optimize(model)
-    status = Gurobi.get_status_code(model)
+		# create a Gurobi model
+	    model = Gurobi.gurobi_model(workspace.environment,H = tmpProblem.objFun.Q,
+	                                                      f = tmpProblem.objFun.L,
+	                                                      A = vcat(-tmpProblem.cnsSet.A,tmpProblem.cnsSet.A),
+	                                                      b = vcat(-tmpProblem.node.cnsLoBs,tmpProblem.node.cnsUpBs),
+	                                                      lb = tmpProblem.node.varLoBs,
+	                                                      ub = tmpProblem.node.varUpBs)
 
+	    Gurobi.update_model!(model)
+	    workspace.outdated = false
+
+	    # solve problem
+	    runtime = @elapsed Gurobi.optimize(model)
+	    status = Gurobi.get_status_code(model)
+
+    else # there is no local cut
+
+	    # create a Gurobi environment
+	    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(workspace.problem.cnsSet)
+	    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
+	    model = Gurobi.gurobi_model(workspace.environment,H = objFun.Q,
+	                                                      f = objFun.L,
+	                                                      A = vcat(-cnsSet.A,cnsSet.A),
+	                                                      b = vcat(-node.cnsLoBs,node.cnsUpBs),
+	                                                      lb = node.varLoBs,
+	                                                      ub = node.varUpBs)
+
+	    Gurobi.update_model!(model)
+	    workspace.outdated = false
+
+	    # solve problem
+	    runtime = @elapsed Gurobi.optimize(model)
+	    status = Gurobi.get_status_code(model)
+	end
 
     # output sol info
     if  status == 2

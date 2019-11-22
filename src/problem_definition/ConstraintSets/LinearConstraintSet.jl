@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T11:25:32+01:00
+# @Last modified time: 2019-11-22T12:52:17+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -104,11 +104,23 @@ end
 function update_bounds!(constraintSet::LinearConstraintSet;loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64[])::Nothing
     if length(loBs) > 0
         @assert length(loBs) == length(constraintSet.loBs) == length(constraintSet.upBs)
-        constraintSet.loBs = loBs
+        @. constraintSet.loBs = loBs
     end
     if length(upBs) > 0
         @assert length(upBs) == length(constraintSet.loBs) == length(constraintSet.upBs)
-        constraintSet.upBs = upBs
+        @. constraintSet.upBs = upBs
+    end
+    return
+end
+
+function update_bounds!(constraintSet::LinearConstraintSet,indices::Array{Int,1};loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64[])::Nothing
+    if length(loBs) > 0
+        @assert length(loBs) == length(indices)
+        @. constraintSet.loBs[indices] = loBs
+    end
+    if length(upBs) > 0
+        @assert length(upBs) == length(indices)
+        @. constraintSet.upBs[indices] = upBs
     end
     return
 end

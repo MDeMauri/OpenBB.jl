@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T11:08:38+01:00
+# @Last modified time: 2019-11-22T15:28:33+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -17,7 +17,7 @@ function flat_size(numVars::Int,numCnss::Int,numCuts::Int)::Int
            4*numVars +          # variable bounds + primal + bound_dual
            3*numCnss +          # constraints bounds + constraints_dual
            numCuts*numVars +    # cuts matrix
-           2*numCuts            # cuts bounds
+           3*numCuts            # cuts bounds + cuts dual
 
 end
 
@@ -84,6 +84,7 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     @. destinationArray[offset+1:offset+numCutsMatrixNZs] = cutNZs[3]; offset += numCutsMatrixNZs
     @. destinationArray[offset+1:offset+numCuts] = node.cuts.loBs; offset += numCuts
     @. destinationArray[offset+1:offset+numCuts] = node.cuts.upBs; offset += numCuts
+    @. destinationArray[offset+1:offset+numCuts] = node.cutDual; offset += numCuts
 
 
 
@@ -168,11 +169,12 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         cutsMatrix = sparse(cutsNZs1,cutsNZs2,cutsNZs3,numCuts,numVars)
         cutsLoBs = flatRepresentation[offset+1:offset+numCuts]; offset += numCuts
         cutsUpBs = flatRepresentation[offset+1:offset+numCuts]; offset += numCuts
+        cutDual = flatRepresentation[offset+1:offset+numCuts]; offset += numCuts
 
         return BBnode(varLoBs,varUpBs,
                       cnsLoBs,cnsUpBs,
                       primal,bndDual,cnsDual,
-                      LinearConstraintSet(cutsMatrix,cutsLoBs,cutsUpBs),
+                      LinearConstraintSet(cutsMatrix,cutsLoBs,cutsUpBs),cutDual,
                       avgAbsFrac,objective,objGap,pseudoObjective,
                       reliable,version)
 

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-27T17:17:52+02:00
+# @Last modified time: 2019-11-22T15:05:08+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -153,32 +153,54 @@ end
 
 ## Solve ##########################################################
 function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
+	# collect info on the problem
+	numVars = get_size(workspace.problem.varSet)
+	numCnss = get_size(workspace.problem.cnsSet)
+	withCuts = nnz(node.cuts) > 0
 
-    # update the problem formulation if needed
-    if workspace.outdated
-        update!(workspace)
+	# check if local cuts are present
+    if withCuts # there are some local cuts
+
+        # construct a temporary problem definition (to accomodate the cuts)
+        tmpProblem = deepcopy(workspace.problem)
+        append!(tmpProblem.cnsSet,LinearConstraintSet(node.cuts.A[[1],:],[node.cuts.loBs[1]],[node.cuts.upBs[1]]))
+		update_bounds!(tmpProblem.varSet,loBs=node.varLoBs,upBs=node.varUpBs)
+		update_bounds!(tmpProblem.cnsSet,collect(1:length(node.cnsLoBs)),loBs=node.cnsLoBs,upBs=node.cnsUpBs)
+
+        # construct a temporary QPALM model
+        tmpWorkspace = setup(tmpProblem,workspace.settings)
+		QPALM.warm_start!(tmpWorkspace.model; x_warm_start=node.primal, y_warm_start=vcat(node.bndDual,node.cnsDual,node.cutDual))
+
+        # solve the temporary problem
+        sol = QPALM.solve!(tmpWorkspace.model)
+
+    else # there is no local cut
+        # update the problem formulation if needed
+        if workspace.outdated
+            update!(workspace)
+        end
+
+        # update bounds in the the qpalm model
+        QPALM.update!(workspace.model;bmin=vcat(node.varLoBs,node.cnsLoBs),bmax=vcat(node.varUpBs,node.cnsUpBs))
+
+        # set hotstart info
+        if length(node.primal) > 0 && length(node.bndDual) > 0 && length(node.cnsDual) > 0
+            QPALM.warm_start!(workspace.model; x_warm_start=node.primal, y_warm_start=vcat(node.bndDual,node.cnsDual))
+        end
+
+        # solve problem
+        sol = QPALM.solve!(workspace.model)
     end
-
-    # collect info on the problem
-    numVars = get_size(workspace.problem.varSet)
-
-    # update bounds in the the qpalm model
-    QPALM.update!(workspace.model;bmin=vcat(node.varLoBs,node.cnsLoBs),bmax=vcat(node.varUpBs,node.cnsUpBs))
-
-    # set hotstart info
-    if length(node.primal) > 0 && length(node.bndDual) > 0 && length(node.cnsDual) > 0
-        QPALM.warm_start!(workspace.model; x_warm_start=node.primal, y_warm_start=vcat(node.bndDual,node.cnsDual))
-    end
-
-    # solve problem
-    sol = QPALM.solve!(workspace.model)
 
     # output sol info
     if  sol.info.status_val == 1
         status = 0 # "solved"
         @. node.primal = sol.x
         @. node.bndDual = sol.y[1:numVars]
-        @. node.cnsDual = sol.y[numVars+1:end]
+        @. node.cnsDual = sol.y[numVars+1:numVars+numCnss]
+		if withCuts
+			@. node.cutDual = sol.y[numVars+numCnss+1:end]
+		end
         objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
         node.objVal = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
         node.objGap = max(workspace.settings.eps_abs,
@@ -187,14 +209,20 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
         status = 1 # "infeasible"
         @. node.primal = @. min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
-        @. node.cnsDual = sol.y[numVars+1:end]
+        @. node.cnsDual = sol.y[numVars+1:numVars+numCnss]
+		if withCuts
+			@. node.cutDual = sol.y[numVars+numCnss+1:end]
+		end
         node.objVal = Inf
         node.objGap = 0.0
     elseif sol.info.status_val in [2,3,4,-6,-2]
         status = 2 # "unreliable"
         @. node.primal = min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
-        @. node.cnsDual = sol.y[numVars+1:end]
+        @. node.cnsDual = sol.y[numVars+1:numVars+numCnss]
+		if withCuts
+			@. node.cutDual = sol.y[numVars+numCnss+1:end]
+		end
         objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
         newObjVal = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
         if newObjVal >= node.ObjVal - node.objGap

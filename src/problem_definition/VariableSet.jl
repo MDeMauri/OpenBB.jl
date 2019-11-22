@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T18:29:59+02:00
+# @Last modified time: 2019-11-22T11:58:30+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -188,6 +188,18 @@ function update_bounds!(variableSet::VariableSet;loBs::Array{Float64,1}=Float64[
     if length(upBs) > 0
         @assert length(upBs) == length(variableSet.loBs) == length(variableSet.upBs)
         @. variableSet.upBs = upBs
+    end
+    return
+end
+
+function update_bounds!(variableSet::VariableSet,indices::Array{Int,1};loBs::Array{Float64,1}=Float64[],upBs::Array{Float64,1}=Float64)::Nothing
+    if length(loBs) > 0
+        @assert length(loBs) == length(indices)
+        @. variableSet.loBs[indices] = loBs
+    end
+    if length(upBs) > 0
+        @assert length(upBs) == length(indices)
+        @. variableSet.upBs[indices] = upBs
     end
     return
 end
