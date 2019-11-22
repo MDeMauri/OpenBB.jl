@@ -3,12 +3,11 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: python_interface.py
 # @Last modified by:   massimo
-# @Last modified time: 2019-07-08T14:43:14+02:00
+# @Last modified time: 2019-11-22T11:22:21+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
-# import the needed components
 # import the needed components
 from os import path
 from copy import copy
@@ -93,17 +92,14 @@ class OpenBBinterface:
                 localProblemDict['varSet']['loBs'] = array(problemDict['varSet']['loBs']).flatten()
                 localProblemDict['varSet']['upBs'] = array(problemDict['varSet']['upBs']).flatten()
                 if 'vals' in problemDict['varSet']: localProblemDict['varSet']['vals'] = array(problemDict['varSet']['vals']).flatten()
-                if 'dscIndices' in problemDict['varSet']: localProblemDict['varSet']['dscIndices'] = [int(problemDict['varSet']['dscIndices'][k])+1 for k in range(len(problemDict['varSet']['dscIndices']))]
-                if 'sos1Groups' in problemDict['varSet']: localProblemDict['varSet']['sos1Groups'] = [int(problemDict['varSet']['sos1Groups'][k]) for k in range(len(problemDict['varSet']['sos1Groups']))]
+                if 'dscIndices' in problemDict['varSet']: localProblemDict['varSet']['dscIndices'] = array([problemDict['varSet']['dscIndices'][k]+1 for k in range(len(problemDict['varSet']['dscIndices']))],int)
+                if 'sos1Groups' in problemDict['varSet']: localProblemDict['varSet']['sos1Groups'] = array([problemDict['varSet']['sos1Groups'][k] for k in range(len(problemDict['varSet']['sos1Groups']))],int)
                 if 'pseudoCosts' in problemDict['varSet']: localProblemDict['varSet']['pseudoCosts'] = array(problemDict['varSet']['pseudoCosts']).flatten()
 
 
             # create a branch and bound current_workspace
             self.jl.setup(subsolver,localProblemDict,bb_settings,ss_settings)
 
-            # temporary
-            if bb_settings['numProcesses'] == 0 or bb_settings['numProcesses'] > 1:
-                self.jl.eval_string('@everywhere include(\"'+path.abspath(path.dirname(__file__))+'/../../../MPCforOpenBB.jl'+'\")')
             return
 
 
@@ -238,7 +234,7 @@ class OpenBBinterface:
 
     ######################## update problem ########################
     # ...
-    def append_constraints(self,newConstraintsDict,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def append_constraints(self,newConstraintsDict,suppressWarnings=False,localOnly=False):
         if not 'A' in newConstraintsDict or not 'loBs' in newConstraintsDict or not 'upBs' in newConstraintsDict:
             raise NameError('newConstraintsDict has to be a dictionary with the following keywords: A,loBs,upBs')
 
@@ -249,11 +245,11 @@ class OpenBBinterface:
             localConstraintsDict['loBs'] = array(newConstraintsDict['loBs']).flatten()
             localConstraintsDict['upBs'] = array(newConstraintsDict['upBs']).flatten()
 
-        self.jl.append_constraints_b(localConstraintsDict,suppressWarnings,suppressUpdate,localOnly)
+        self.jl.append_constraints_b(localConstraintsDict,suppressWarnings,localOnly)
         return
 
     # ...
-    def insert_constraints(self,newConstraintsDict,index,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def insert_constraints(self,newConstraintsDict,index,suppressWarnings=False,localOnly=False):
         # check correctness of the input
         if not 'A' in newConstraintsDict or not 'loBs' in newConstraintsDict or not 'upBs' in newConstraintsDict:
             raise NameError('newConstraintsDict has to be a dictionary with the following keywords: A,loBs,upBs')
@@ -265,42 +261,42 @@ class OpenBBinterface:
             localConstraintsDict['loBs'] = array(newConstraintsDict['loBs']).flatten()
             localConstraintsDict['upBs'] = array(newConstraintsDict['upBs']).flatten()
 
-        self.jl.insert_constraints_b(localConstraintsDict,index+1,suppressWarnings,suppressUpdate,localOnly)
+        self.jl.insert_constraints_b(localConstraintsDict,index+1,suppressWarnings,localOnly)
         return
 
 
     # ...
-    def remove_constraints(self,indices,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def remove_constraints(self,indices,suppressWarnings=False,localOnly=False):
         for k in range(len(indices)):
             indices[k] = indices[k] + 1
-        self.jl.remove_constraints_b(indices,suppressWarnings,suppressUpdate,localOnly)
+        self.jl.remove_constraints_b(indices,suppressWarnings,localOnly)
         return
 
     # ...
-    def permute_constraints(self,permutation,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def permute_constraints(self,permutation,suppressWarnings=False,localOnly=False):
         for k in range(len(permutation)):
             permutation[k] = permutation[k] + 1
-        self.jl.permute_constraints_b(permutation,suppressWarnings,suppressUpdate,localOnly)
+        self.jl.permute_constraints_b(permutation,suppressWarnings,localOnly)
         return
 
     # ...
-    def update_bounds(self,boundsDict,suppressWarnings=False,suppressUpdate=False,localOnly=False):
-        self.jl.update_bounds_b(boundsDict,suppressWarnings,suppressUpdate,localOnly)
+    def update_bounds(self,boundsDict,suppressWarnings=False,localOnly=False):
+        self.jl.update_bounds_b(boundsDict,suppressWarnings,localOnly)
         return
 
     # ...
-    def set_objective(self,newObjectiveDict,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def set_objective(self,newObjectiveDict,suppressWarnings=False,localOnly=False):
         # reformat the objective info
         if len(newObjectiveDict) > 0:
             localObjectiveDict = {}
             if 'Q' in newObjectiveDict: localObjectiveDict['Q'] = matrix(newObjectiveDict['Q'])
             if 'L' in newObjectiveDict: localObjectiveDict['L'] = array(newObjectiveDict['L']).flatten()
 
-            self.jl.set_objective_b(newObjectiveDict,suppressWarnings,suppressUpdate,localOnly)
+            self.jl.set_objective_b(localObjectiveDict,suppressWarnings,localOnly)
         return
 
     # ...
-    def set_constraintSet(self,newConstraintsDict,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def set_constraintSet(self,newConstraintsDict,suppressWarnings=False,localOnly=False):
         # reformat the constraints set
         if len(newConstraintsDict)>0:
             localConstraintsDict = {}
@@ -308,12 +304,12 @@ class OpenBBinterface:
             localConstraintsDict['loBs'] = array(newConstraintsDict['loBs']).flatten()
             localConstraintsDict['upBs'] = array(newConstraintsDict['upBs']).flatten()
 
-            self.jl.set_constraintSet_b(localConstraintsDict,suppressWarnings,suppressUpdate,localOnly)
+            self.jl.set_constraintSet_b(localConstraintsDict,suppressWarnings,localOnly)
         return
 
 
     # adds new variables, new constraints and a new part of the objective to the problem
-    def append_problem(self,problemDict,suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def append_problem(self,problemDict,suppressWarnings=False,localOnly=False):
         if not problemDict is None:
             # check the input
             if not 'objFun' in problemDict:
@@ -342,18 +338,18 @@ class OpenBBinterface:
                 if 'sos1Groups' in problemDict['varSet']: localProblemDict['varSet']['sos1Groups'] = [int(problemDict['varSet']['sos1Groups'][k]) for k in range(len(problemDict['varSet']['sos1Groups']))]
                 if 'pseudoCosts' in problemDict['varSet']: localProblemDict['varSet']['pseudoCosts'] = array(problemDict['varSet']['pseudoCosts']).flatten()
 
-                self.jl.append_problem_b(localProblemDict,suppressWarnings,suppressUpdate,localOnly)
+                self.jl.append_problem_b(localProblemDict,suppressWarnings,localOnly)
         return
 
 
     # marks as discrete formally not discrete variables
-    def integralize_variables(self,newDscIndices,newSos1Groups=array([],int),suppressWarnings=False,suppressUpdate=False,localOnly=False):
+    def integralize_variables(self,newDscIndices,newSos1Groups=array([],int),suppressWarnings=False,localOnly=False):
         for k in range(len(newDscIndices)):
             newDscIndices[k] = newDscIndices[k] + 1
-        self.jl.integralize_variables_b(newDscIndices,newSos1Groups,suppressWarnings,suppressUpdate,localOnly)
+        self.jl.integralize_variables_b(newDscIndices,newSos1Groups,suppressWarnings,localOnly)
         return
 
     # ...
-    def update_objectiveCutoff(self,newCutoff,suppressWarnings=False,suppressUpdate=False,localOnly=False):
-        self.jl.update_objectiveCutoff_b(newCutoff,suppressWarnings,suppressUpdate,localOnly)
+    def update_objectiveCutoff(self,newCutoff,suppressWarnings=False,localOnly=False):
+        self.jl.update_objectiveCutoff_b(newCutoff,suppressWarnings,localOnly)
         return

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-21T17:34:21+01:00
+# @Last modified time: 2019-11-22T11:08:38+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -23,7 +23,7 @@ end
 
 
 function flat_size(node::BBnode)::Int
-    return flat_size(length(node.primal),length(node.cnsDual),size(node.cutsMatrix,1))
+    return flat_size(length(node.primal),length(node.cnsDual),get_size(node.cuts))
 end
 
 function flat_size(node::NullBBnode)::Int
@@ -39,8 +39,8 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
 
     numVars = length(node.primal)
     numCnss = length(node.cnsDual)
-    numCuts = size(node.cutsMatrix,1)
-    numCutsMatrixNZs = nnz(node.cutsMatrix)
+    numCuts = get_size(node.cuts)
+    numCutsMatrixNZs = nnz(node.cuts)
 
     @assert length(destinationArray) >= flat_size(numVars,numCnss,numCuts) + offset
 
@@ -61,7 +61,7 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
 
     # cuts dimensions
     destinationArray[offset+1] = numCuts
-    destinationArray[offset+2] = nnz(node.cutsMatrix)
+    destinationArray[offset+2] = nnz(node.cuts)
     offset += 2
 
     # bounds
@@ -78,12 +78,12 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     @. destinationArray[offset+1:offset+numCnss] = node.cnsDual; offset += numCnss
 
     # cuts
-    cutNZs = findnz(node.cutsMatrix)
+    cutNZs = findnz(node.cuts.A)
     @. destinationArray[offset+1:offset+numCutsMatrixNZs] = cutNZs[1]; offset += numCutsMatrixNZs
     @. destinationArray[offset+1:offset+numCutsMatrixNZs] = cutNZs[2]; offset += numCutsMatrixNZs
     @. destinationArray[offset+1:offset+numCutsMatrixNZs] = cutNZs[3]; offset += numCutsMatrixNZs
-    @. destinationArray[offset+1:offset+numCuts] = node.cutsLoBs; offset += numCuts
-    @. destinationArray[offset+1:offset+numCuts] = node.cutsUpBs; offset += numCuts
+    @. destinationArray[offset+1:offset+numCuts] = node.cuts.loBs; offset += numCuts
+    @. destinationArray[offset+1:offset+numCuts] = node.cuts.upBs; offset += numCuts
 
 
 
@@ -172,7 +172,7 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         return BBnode(varLoBs,varUpBs,
                       cnsLoBs,cnsUpBs,
                       primal,bndDual,cnsDual,
-                      cutsMatrix,cutsLoBs,cutsUpBs,
+                      LinearConstraintSet(cutsMatrix,cutsLoBs,cutsUpBs),
                       avgAbsFrac,objective,objGap,pseudoObjective,
                       reliable,version)
 

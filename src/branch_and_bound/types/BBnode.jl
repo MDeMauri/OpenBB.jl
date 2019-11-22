@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBnode.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-21T13:45:46+01:00
+# @Last modified time: 2019-11-22T10:57:33+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -23,9 +23,7 @@ mutable struct BBnode <: AbstractBBnode
     bndDual::Array{Float64,1}
     cnsDual::Array{Float64,1}
     #local cuts
-    cutsMatrix::SparseMatrixCSC{Float64,Int}
-    cutsLoBs::Array{Float64,1}
-    cutsUpBs::Array{Float64,1}
+    cuts::LinearConstraintSet{SparseMatrixCSC{Float64,Int}}
     # scores
     avgAbsFrac::Float64
     objVal::Float64
@@ -50,7 +48,7 @@ function BBnode(varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
     return BBnode(varLoBs,varUpBs,
                   cnsLoBs,cnsUpBs,
                   primal,bndDual,cnsDual,
-                  spzeros(maxNumberOfCuts,length(varLoBs)),zeros(maxNumberOfCuts),zeros(maxNumberOfCuts),
+                  LinearConstraintSet(spzeros(maxNumberOfCuts,length(varLoBs)),zeros(maxNumberOfCuts),zeros(maxNumberOfCuts)),
                   NaN,NaN,0.0,NaN,
                   false,version)
 end
@@ -66,7 +64,7 @@ function copy(node::BBnode)::BBnode
     return BBnode(node.varLoBs,node.varUpBs,
                   node.cnsLoBs,node.cnsUpBs,
                   node.primal,node.bndDual,node.cnsDual,
-                  node.cutsMatrix,node.cutsLoBs,node.cutsUpBs,
+                  node.cuts,
                   node.avgAbsFrac,node.objVal,node.pseudoObjective,
                   node.reliable,node.version)
 end
@@ -77,7 +75,7 @@ function deepcopy(node::BBnode)::BBnode
     return BBnode(copy(node.varLoBs),copy(node.varUpBs),
                   copy(node.cnsLoBs),copy(node.cnsUpBs),
                   copy(node.primal),copy(node.bndDual),copy(node.cnsDual),
-                  copy(node.cutsMatrix),copy(node.cutsLoBs),copy(node.cutsUpBs),
+                  deepcopy(node.cuts),
                   node.avgAbsFrac,node.objVal,node.objGap,node.pseudoObjective,
                   node.reliable,node.version)
 end
