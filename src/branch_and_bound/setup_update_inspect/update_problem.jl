@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_problem.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-20T14:38:21+01:00
+# @Last modified time: 2019-11-22T11:23:31+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -39,7 +39,7 @@ function insert_constraints!(workspace::BBworkspace{T1,T2,T3},constraintSet::T4,
 		end
 
 		# change the problem definition
-		insert_constraints!(workspace.problem.cnsSet,constraintSet,index)
+		insert!(workspace.problem.cnsSet,constraintSet,index)
 
 		# mark the workspace as outdated
 		make_outdated!(workspace)
@@ -174,7 +174,7 @@ function update_bounds!(workspace::BBworkspace{T1,T2,T3};
 		update_bounds!(workspace.problem.cnsSet,loBs=cnsLoBs,upBs=cnsUpBs)
 
         # propagate the changes to the nodes
-		push!(workspace.updatesRegister,update_bounds!,(copy(varLoBs),copy(varUpBs),copy(cnsLoBs),copy(cnsUpBs),workspace.settings.primalTolerance))
+		push!(workspace.updatesRegister,update_bounds!,(copy(varLoBs),copy(varUpBs),copy(cnsLoBs),copy(cnsUpBs)))
 
 		# mark the workspace as outdated
 		make_outdated!(workspace)
@@ -219,7 +219,7 @@ function append_problem!(workspace::BBworkspace{T1,T2,T3},problem::Problem;suppr
 		# modify the constraint set
 		append_variables!(workspace.problem.cnsSet,numVars2)
 		insert_variables!(localProblem.cnsSet,numVars1,1)
-		append_constraints!(workspace.problem.cnsSet,localProblem.cnsSet)
+		append!(workspace.problem.cnsSet,localProblem.cnsSet)
 
 		# modify the objective function
 		append_variables!(workspace.problem.objFun,numVars2)
@@ -230,7 +230,7 @@ function append_problem!(workspace::BBworkspace{T1,T2,T3},problem::Problem;suppr
 		make_outdated!(workspace)
 
         # propagate the changes to the nodes
-		push!(workspace.updatesRegister,insert_variables!,(numVars1+1,copy(problem.varSet.vals),deepcopy(get_bounds(problem.varSet))))
+		push!(workspace.updatesRegister,insert_variables!,(numVars1+1,deepcopy(problem.varSet.vals),deepcopy(get_bounds(problem.varSet))))
 		push!(workspace.updatesRegister,insert_constraints!,(numCnss1+1,deepcopy(get_bounds(problem.cnsSet))))
 
     end
@@ -288,7 +288,7 @@ function integralize_variables!(workspace::BBworkspace{T1,T2,T3},newDscIndices::
 				(workspace.problem.varSet.pseudoCosts[1][tmpPerm,:],workspace.problem.varSet.pseudoCosts[2][tmpPerm,:])
 
         # propagate the changes to the nodes
-		push!(workspace.updatesRegister,round_variable_bounds!,(copy(newDscIndices),workspace.settings.primalTolerance))
+		push!(workspace.updatesRegister,round_variable_bounds!,(copy(newDscIndices),))
 
     end
 
@@ -322,7 +322,7 @@ function fix_variables!(workspace::BBworkspace{T1,T2,T3},indices::Array{Int,1};v
 		end
 
         # propagate the changes to the nodes
-		push!(workspace.updatesRegister,fix_variables!,(copy(indices),values,workspace.settings.primalTolerance))
+		push!(workspace.updatesRegister,fix_variables!,(copy(indices),copy(values)))
 
     end
 

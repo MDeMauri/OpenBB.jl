@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: problem_definitions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-06T14:27:52+02:00
+# @Last modified time: 2019-11-22T12:49:02+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -20,7 +20,7 @@ abstract type AbstractProblem end
 struct NullProblem <: AbstractProblem end
 
 # concrete problem
-struct Problem{T1<:AbstractObjective,T2<:AbstractConstraintSet}
+mutable struct Problem{T1<:AbstractObjective,T2<:AbstractConstraintSet}
     objFun::T1
     cnsSet::T2
     varSet::VariableSet

@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-19T12:53:15+02:00
+# @Last modified time: 2019-11-22T13:49:31+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,7 +28,7 @@ module OpenBB
         return "Gurobi" in keys(installed())
     end
     function withQPALM()::Bool
-        return false && "QPALM" in keys(installed())
+        return "QPALM" in keys(installed())
     end
 
     function get_available_subsolvers()::Array{String,1}

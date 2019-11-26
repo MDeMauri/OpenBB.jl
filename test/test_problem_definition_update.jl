@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_problem_definition_update.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T19:17:10+02:00
+# @Last modified time: 2019-11-22T11:16:59+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,8 +28,8 @@ end
 for c in cns
     tmp = deepcopy(c)
     OpenBB.update_bounds!(tmp,loBs=[2.],upBs=[2.])
-    OpenBB.insert_constraints!(tmp,c,2)
-    OpenBB.append_constraints!(tmp,tmp)
+    OpenBB.insert!(tmp,c,2)
+    OpenBB.append!(tmp,tmp)
     OpenBB.remove_constraints!(tmp,[3])
     OpenBB.append_variables!(tmp,5)
     OpenBB.remove_variables!(tmp,[1])

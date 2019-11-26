@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-21T10:51:00+01:00
+# @Last modified time: 2019-11-21T18:40:39+01:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
@@ -17,7 +17,7 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
     nodeJustUpdated = false
     if node.version < workspace.updatesRegister.masterVersion
         nodeJustUpdated = true
-        if update!(node,workspace.updatesRegister) == false # update! returns false if the node is discovered infeasible
+        if update!(node,workspace) == false # update! returns false if the node is discovered infeasible
             return BBnode[]
         end
     end

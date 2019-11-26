@@ -9,11 +9,10 @@
 
 
 # single constraint linear bounds propagation
-function bounds_propagation!(row::Int,
-                            A::SparseMatrixCSC{Float64,Int},
+function bounds_propagation!(row::Int, A::SparseMatrixCSC{Float64,Int64},
                             cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
                             varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
-                            dscIndices::Array{Int64,1})::Tuple{Bool,Set{Int}}
+                            dscIndices::Array{Int64,1})
       cns = A[row,1:end]
       cnsLoB = cnsLoBs[row]
       cnsUpB = cnsUpBs[row]
@@ -144,8 +143,7 @@ end
 
 
 # multi-constraint linear bounds propagation
-function bounds_propagation!(rowsToCheck::Set{Int},
-                            A::SparseMatrixCSC{Float64,Int},
+function bounds_propagation!(rowsToCheck::Set{Int}, A::SparseMatrixCSC{Float64,Int64},
                             cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
                             varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
                             dscIndices::Array{Int64,1})::Tuple{Bool, Set{Int}}
@@ -177,14 +175,25 @@ function bounds_propagation!(rowsToCheck::Set{Int},
       return true, updatedVars
 end
 
-function bounds_propagation!(node::BBnode, A::SparseMatrixCSC{Float64,Int}, dscIndices::Array{Int64,1}, varsToCheck::Array{Int64,1})::Tuple{Bool, Set{Int}}
+
+function bounds_propagation!(rowsToCheck::Set{Int}, A::Array{Float64,2},
+                            cnsLoBs::Array{Float64,1},cnsUpBs::Array{Float64,1},
+                            varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
+                            dscIndices::Array{Int64,1})::Tuple{Bool, Set{Int}}
+    return bounds_propagation!(rowsToCheck, sparse(A), cnsLoBs, cnsUpBs, varLoBs, varUpBs, dscIndices)
+end
+
+function bounds_propagation!(node::BBnode, A::SparseMatrixCSC{Float64,Int64}, dscIndices::Array{Int64,1}, varsToCheck::Array{Int64,1})::Tuple{Bool, Set{Int}}
       if 0 in varsToCheck
             rows = Set(1:size(A)[1])
       else
             rows = Set(unique(findnz(A[1:end,collect(varsToCheck)])[1]))
       end
 
-      return bounds_propagation!(rows,
-                                 A, node.cnsLoBs, node.cnsUpBs,
+      return bounds_propagation!(rows, A, node.cnsLoBs, node.cnsUpBs,
                                  node.varLoBs, node.varUpBs, dscIndices)
+end
+
+function bounds_propagation!(node::BBnode, A::Array{Float64, 2}, dscIndices::Array{Int64,1}, varsToCheck::Array{Int64,1})::Tuple{Bool, Set{Int}}
+    return bounds_propagation!(node, sparse(A), dscIndices, varsToCheck)
 end

@@ -3,23 +3,27 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: flatten_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-16T23:32:14+02:00
+# @Last modified time: 2019-11-22T15:28:33+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 
 # this function returns the size of a flat representation of a node
-function flat_size(numVars::Int,numCnss::Int)::Int
-    return 3 +            # header
-           6 +            # average fractionality + objective + objective gap + pseudo-objective + reliable + version
-           4*numVars +    # variable bounds + primal + bound_dual
-           3*numCnss      # constraints bounds + constraints_dual
+function flat_size(numVars::Int,numCnss::Int,numCuts::Int)::Int
+    return 3 +                  # header
+           6 +                  # average fractionality + objective + objective gap + pseudo-objective + reliable + version
+           2 +                  # num cuts + nun non-zeros in cuts
+           4*numVars +          # variable bounds + primal + bound_dual
+           3*numCnss +          # constraints bounds + constraints_dual
+           numCuts*numVars +    # cuts matrix
+           3*numCuts            # cuts bounds + cuts dual
+
 end
 
 
 function flat_size(node::BBnode)::Int
-    return flat_size(length(node.primal),length(node.cnsDual))
+    return flat_size(length(node.primal),length(node.cnsDual),get_size(node.cuts))
 end
 
 function flat_size(node::NullBBnode)::Int
@@ -35,8 +39,10 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
 
     numVars = length(node.primal)
     numCnss = length(node.cnsDual)
+    numCuts = get_size(node.cuts)
+    numCutsMatrixNZs = nnz(node.cuts)
 
-    @assert length(destinationArray) >= flat_size(numVars,numCnss) + offset
+    @assert length(destinationArray) >= flat_size(numVars,numCnss,numCuts) + offset
 
     # header
     destinationArray[offset+1] = 1. # type of node
@@ -53,6 +59,11 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     destinationArray[offset+6] = node.version
     offset += 6
 
+    # cuts dimensions
+    destinationArray[offset+1] = numCuts
+    destinationArray[offset+2] = nnz(node.cuts)
+    offset += 2
+
     # bounds
     @. destinationArray[offset+1:offset+numVars] = node.varLoBs; offset+=numVars
     @. destinationArray[offset+1:offset+numVars] = node.varUpBs; offset+=numVars
@@ -65,6 +76,17 @@ function flatten_in!(node::BBnode,destinationArray::T;offset::Int=0)::Int where 
     # dual
     @. destinationArray[offset+1:offset+numVars] = node.bndDual; offset += numVars
     @. destinationArray[offset+1:offset+numCnss] = node.cnsDual; offset += numCnss
+
+    # cuts
+    cutNZs = findnz(node.cuts.A)
+    @. destinationArray[offset+1:offset+numCutsMatrixNZs] = cutNZs[1]; offset += numCutsMatrixNZs
+    @. destinationArray[offset+1:offset+numCutsMatrixNZs] = cutNZs[2]; offset += numCutsMatrixNZs
+    @. destinationArray[offset+1:offset+numCutsMatrixNZs] = cutNZs[3]; offset += numCutsMatrixNZs
+    @. destinationArray[offset+1:offset+numCuts] = node.cuts.loBs; offset += numCuts
+    @. destinationArray[offset+1:offset+numCuts] = node.cuts.upBs; offset += numCuts
+    @. destinationArray[offset+1:offset+numCuts] = node.cutDual; offset += numCuts
+
+
 
     return offset
 
@@ -114,13 +136,18 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         offset += 3
 
         # numeric values
-        avgAbsFrac      = flatRepresentation[offset+1]
-        objective       = flatRepresentation[offset+2]
-        objGap          = flatRepresentation[offset+3]
-        pseudoObjective = flatRepresentation[offset+4]
-        reliable        = Bool(flatRepresentation[offset+5])
-        version         = Int(flatRepresentation[offset+6])
+        avgAbsFrac          = flatRepresentation[offset+1]
+        objective           = flatRepresentation[offset+2]
+        objGap              = flatRepresentation[offset+3]
+        pseudoObjective     = flatRepresentation[offset+4]
+        reliable            = Bool(flatRepresentation[offset+5])
+        version             = Int(flatRepresentation[offset+6])
         offset += 6
+
+        # cuts dimensions
+        numCuts             = Int(flatRepresentation[offset+1])
+        numCutsMatrixNZs    = Int(flatRepresentation[offset+2])
+        offset += 2
 
         # bounds
         varLoBs = flatRepresentation[offset+1:offset+numVars]; offset += numVars
@@ -135,7 +162,21 @@ function rebuild_node(flatRepresentation::T1;offset::Int=0)::AbstractBBnode wher
         bndDual = flatRepresentation[offset+1:offset+numVars]; offset += numVars
         cnsDual = flatRepresentation[offset+1:offset+numCnss]; offset += numCnss
 
-        return BBnode(varLoBs,varUpBs,cnsLoBs,cnsUpBs,primal,bndDual,cnsDual,avgAbsFrac,objective,objGap,pseudoObjective,reliable,version)
+        # cuts
+        cutsNZs1 = flatRepresentation[offset+1:offset+numCutsMatrixNZs]; offset += numCutsMatrixNZs
+        cutsNZs2 = flatRepresentation[offset+1:offset+numCutsMatrixNZs]; offset += numCutsMatrixNZs
+        cutsNZs3 = flatRepresentation[offset+1:offset+numCutsMatrixNZs]; offset += numCutsMatrixNZs
+        cutsMatrix = sparse(cutsNZs1,cutsNZs2,cutsNZs3,numCuts,numVars)
+        cutsLoBs = flatRepresentation[offset+1:offset+numCuts]; offset += numCuts
+        cutsUpBs = flatRepresentation[offset+1:offset+numCuts]; offset += numCuts
+        cutDual = flatRepresentation[offset+1:offset+numCuts]; offset += numCuts
+
+        return BBnode(varLoBs,varUpBs,
+                      cnsLoBs,cnsUpBs,
+                      primal,bndDual,cnsDual,
+                      LinearConstraintSet(cutsMatrix,cutsLoBs,cutsUpBs),cutDual,
+                      avgAbsFrac,objective,objGap,pseudoObjective,
+                      reliable,version)
 
     elseif flatRepresentation[offset+1] == -1.0
         return KillerNode(flatRepresentation[offset+2])

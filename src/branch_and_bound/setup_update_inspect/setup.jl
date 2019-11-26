@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-17T12:00:01+02:00
+# @Last modified time: 2019-11-21T17:34:59+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -66,7 +66,7 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 		# construct the communication channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,bbSettings.numProcesses)
 		for k in 1:bbSettings.numProcesses
-			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss))
+			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss,bbSettings.maxNumberOfLocalCuts))
             # obstruct the communication channels until the receiving worker is ready
 			put!(communicationChannels[k],NullBBnode())
 		end
