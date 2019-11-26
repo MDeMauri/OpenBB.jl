@@ -15,7 +15,6 @@ include("./linear_bounds_propagation.jl")
 include("./gcd.jl")
 include("./sos.jl")
 
-
 function preprocess!(node::BBnode, workspace::BBworkspace, varsToCheck::Array{Int64,1};
                      withBoundsPropagation::Bool=true)::Bool
 
@@ -66,3 +65,18 @@ function preprocess!(node::BBnode, workspace::BBworkspace, varsToCheck::Array{In
 
    return feasible
 end
+
+
+function preprocess_rows!(node::BBnode, workspace::BBworkspace, rowsToCheck::Array{Int64,1})::Bool
+      feasible, updatedVars = bounds_propagation!(
+          Set(rowsToCheck), 
+          get_linearConstraints(workspace.problem.cnsSet),
+          node.cnsLoBs, node.cnsUpBs,
+          node.varLoBs, node.varUpBs,
+          workspace.problem.varSet.dscIndices
+      )
+       
+      updatedVarsArray = collect(updatedVars)::Array{Int64, 1}
+      return preprocess!(node, workspace, updatedVarsArray, withBoundsPropagation=false)
+end
+

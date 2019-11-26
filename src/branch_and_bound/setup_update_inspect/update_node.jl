@@ -37,8 +37,9 @@ function insert_constraints!(node::BBnode,position::Int64,newBounds::Tuple{Array
     splice!(node.cnsLoBs,position:position-1,copy(newBounds[1]))
 	# extend dual solution
 	splice!(node.cnsUpBs,position:position-1,copy(newBounds[2]))
-	#TODO preprocessing
-	return true
+
+	# preprocessing
+    preprocess_rows!(node, workspace, collect(position:(position + length(newBounds[1]) - 1)))
 end
 
 # adapt the node to the removal of constraints
@@ -72,6 +73,10 @@ function update_bounds!(node::BBnode,varLoBs::Array{Float64,1},varUpBs::Array{Fl
 	@assert length(varUpBs) == 0 || length(varUpBs) == length(node.varUpBs)
 	@assert length(cnsLoBs) == 0 || length(cnsLoBs) == length(node.cnsLoBs)
 	@assert length(cnsUpBs) == 0 || length(cnsUpBs) == length(node.cnsUpBs)
+
+    originalLoBs = copy(node.varLoBs)
+    originalUpBs = copy(node.varUpBs)
+
 	# update the bounds
 	if length(varLoBs)>0 @. node.varLoBs = max(node.varLoBs,varLoBs) end
 	if length(varUpBs)>0 @. node.varUpBs = min(node.varUpBs,varUpBs) end
@@ -88,8 +93,12 @@ function update_bounds!(node::BBnode,varLoBs::Array{Float64,1},varUpBs::Array{Fl
 			return false
 		end
 	end
-	#TODO preprocessing
-	return true
+
+	# preprocessing
+    newUpdatedVars = findall(x->!x, originalLoBs .== node.varLoBs)
+    newUpdatedVars = unique(union(newUpdatedVars, findall(x->!x, originalUpBs .== node.varUpBs)))
+
+    return preprocess!(node, workspace, newUpdatedVars)
 end
 
 
@@ -122,8 +131,9 @@ function round_variable_bounds!(node::BBnode,indices::Array{Int64,1},
 			return false
 		end
 	end
-	#TODO preprocessing
-	return true
+
+	# preprocessing
+    return preprocess!(node, workspace, indices)
 end
 
 
@@ -141,6 +151,7 @@ function fix_variables!(node::BBnode,indices::Array{Int,1},values::Array{Float64
 			return false
 		end
 	end
-	#TODO preprocessing
-	return true
+
+	# preprocessing
+    return preprocess!(node, workspace, indices)
 end
