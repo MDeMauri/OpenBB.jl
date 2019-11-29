@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_node.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T10:35:58+01:00
+# @Last modified time: 2019-11-29T13:15:54+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -42,12 +42,9 @@ function insert_constraints!(node::BBnode,position::Int64,newBounds::Tuple{Array
 	splice!(node.cnsLoBs,position:position-1,copy(newBounds[1]))
 	# extend dual solution
 	splice!(node.cnsUpBs,position:position-1,copy(newBounds[2]))
-
-	# Updated variables
-	A = get_linearConstraints(workspace.problem.cnsSet)
-
-	for i=position:position+length(newBounds[1])-1
-		newUpdatedVars[A[i,:] .!= 0] .= true
+	# collect the varialbes involved in the update
+	for k in position:position+length(newBounds[1])-1
+		newUpdatedVars[get_sparsity(workspace.problem.cnsSet,k)] .= true
 	end
 
 	return true
@@ -88,26 +85,49 @@ function update_bounds!(node::BBnode,varLoBs::Array{Float64,1},varUpBs::Array{Fl
 	originalLoBs = copy(node.varLoBs)
 	originalUpBs = copy(node.varUpBs)
 
-	# update the bounds
-	if length(varLoBs)>0 @. node.varLoBs = max(node.varLoBs,varLoBs) end
-	if length(varUpBs)>0 @. node.varUpBs = min(node.varUpBs,varUpBs) end
-	if length(cnsLoBs)>0 @. node.cnsLoBs = max(node.cnsLoBs,cnsLoBs) end
-	if length(cnsUpBs)>0 @. node.cnsUpBs = min(node.cnsUpBs,cnsUpBs) end
-	# check the feasibility of new bounds
-	for k in 1:length(node.varLoBs)
-		if node.varLoBs[k] > node.varUpBs[k] + 2*workspace.settings.primalTolerance
-			return false
+	# update the variable bounds
+	if length(varLoBs) > 0
+		for k in 1:length(node.varLoBs)
+			if varLoBs[k] > node.varUpBs[k]
+				return false
+			elseif varLoBs[k] > node.varLoBs[k]
+				node.varLoBs[k] = varLoBs[k]
+				newUpdatedVars[k] = true
+			end
 		end
 	end
-	for k in 1:length(node.cnsLoBs)
-		if node.cnsLoBs[k] > node.cnsUpBs[k] + 2*workspace.settings.primalTolerance
-			return false
+	if length(varUpBs) > 0
+		for k in 1:length(node.varUpBs)
+			if varUpBs[k] < node.varLoBs[k]
+				return false
+			elseif varUpBs[k] < node.varUpBs[k]
+				node.varUpBs[k] = varUpBs[k]
+				newUpdatedVars[k] = true
+			end
 		end
 	end
 
-	# updated variables
-	newUpdatedVars[findall(x->!x, originalLoBs .== node.varLoBs)] .= true
-	newUpdatedVars[findall(x->!x, originalUpBs .== node.varUpBs)] .= true
+	# update the constraints bounds
+	if length(cnsLoBs) > 0
+		for k in 1:length(node.cnsLoBs)
+			if cnsLoBs[k] > node.cnsUpBs[k]
+				return false
+			elseif cnsLoBs[k] > node.cnsLoBs[k]
+				node.cnsLoBs[k] = cnsLoBs[k]
+				newUpdatedVars[get_sparsity(workspace.problem.cnsSet,k)] = true
+			end
+		end
+	end
+	if length(cnsUpBs) > 0
+		for k in 1:length(node.cnsUpBs)
+			if cnsUpBs[k] < node.cnsLoBs[k]
+				return false
+			elseif cnsUpBs[k] < node.cnsUpBs[k]
+				node.cnsUpBs[k] = cnsUpBs[k]
+				newUpdatedVars[get_sparsity(workspace.problem.cnsSet,k)] = true
+			end
+		end
+	end
 
 	return true
 end
@@ -118,14 +138,16 @@ function insert_variables!(node::BBnode,position::Int64,newPrimal::Array{Float64
 							workspace::BBworkspace{T1,T2,T3}, newUpdatedVars::BitArray{1})::Bool where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 	# check input
 	@assert length(newBounds[1]) == length(newBounds[2]) == length(newPrimal)
+	numNewVars = length(newPrimal)
 	# extend bounds arrays
 	splice!(node.varLoBs,position:position-1,copy(newBounds[1]))
 	splice!(node.varUpBs,position:position-1,copy(newBounds[2]))
 	# extend primal/dual solutions
 	splice!(node.primal,position:position-1,copy(newPrimal))
-	splice!(node.bndDual,position:position-1,zeros(length(newPrimal)))
-
-	newUpdatedVars[position:position-1] .= true
+	splice!(node.bndDual,position:position-1,zeros(numNewVars))
+	# shift accordingly the newUpdatedVars set
+	@. newUpdatedVars[position+numNewVars:end] = newUpdatedVars[position:end-numNewVars]
+	@. newUpdatedVars[position:position+numNewVars-1] = true
 
 	return true
 end
