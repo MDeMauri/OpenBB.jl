@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T15:05:08+01:00
+# @Last modified time: 2019-12-10T18:11:12+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -13,53 +13,67 @@ using QPALM
 
 # structure used to hold the settings for QPALM
 mutable struct QPALMsettings <: AbstractSettings
-    max_iter::Int                       # Maximum number of interations 0 < max_iter
-    eps_abs::Float64                    # Absolute tolerance 	0 <= eps_abs
-    eps_rel::Float64                    # Relative tolerance 	0 <= eps_rel
-    eps_abs_in::Float64                 # Intermediate absolute convergence tolerance 	0 <= eps_abs_in
-    eps_rel_in::Float64                 # Intermediate relative convergence tolerance 	0 <= eps_rel_in
-    rho::Float64                        # Tolerance scaling factor step 	0 < rho < 1
-    eps_prim_inf::Float64               # Primal infeasibility tolerance    0 <= eps_prim_inf
-    eps_dual_inf::Float64               # Dual infeasibility tolerance      0 <= eps_dual_inf
-    theta::Float64                      # Penalty update criterion          theta <= 1
-    delta::Float64                      # Penalty update factor             1 < delta
-    tau_init::Float64                   # Initial stepsize in backtracking  0 < tau_init
-    proximal::Bool                      # Use proximal method of multipliers  True/False
-    gamma_init::Float64                 # Injtial proximal penalty          0 < gamma_init
-    gamma_upd::Float64                  # Proximal penalty update factor    1 <= gamma_upd
-    gamma_max::Float64                  # Proximal penalty parameter cap    gamma_init < gamma_max
-    scaling::Int                        # Number of scaling iterations 	0 (disabled) or 0 < scaling (integer)
-    nonconvex::Bool                     # Indicate if QP is convex          True/False
-    verbose::Bool                       # Print output 	True/False
-    warm_start::Bool                    # Perform warm starting 	True/False
+	max_iter::Int64
+	inner_max_iter::Int64
+	eps_abs::Float64
+	eps_rel::Float64
+	eps_abs_in::Float64
+	eps_rel_in::Float64
+	rho::Float64
+	eps_prim_inf::Float64
+	eps_dual_inf::Float64
+	theta::Float64
+	delta::Float64
+	sigma_max::Float64
+	proximal::Bool
+	gamma_init::Float64
+	gamma_upd::Float64
+	gamma_max::Float64
+	scaling::Int64
+	nonconvex::Bool
+	verbose::Bool
+	print_iter::Int64
+	warm_start::Bool
+	reset_newton_iter::Int64
+	enable_dual_termination::Bool
+	dual_objective_limit::Float64
+	time_limit::Float64
 end
 
 
-function QPALMsettings(; max_iter::Int=10000,
-                         eps_abs::Float64=1e-8,
-                         eps_rel::Float64=1e-8,
-                         eps_abs_in::Float64=1.0,
-                         eps_rel_in::Float64=1.0,
-                         eps_prim_inf::Float64=1e-8,
-                         eps_dual_inf::Float64=1e-8,
-                         rho::Float64=0.1,
-                         theta::Float64=0.25,
-                         delta::Float64=10.0,
-                         tau_init::Float64=1.0,
-                         proximal::Bool=true,
-                         gamma_init::Float64=1e6,
-                         gamma_upd::Float64=10.0,
-                         gamma_max::Float64=1e8,
-                         scaling::Int=10,
-                         nonconvex::Bool=false,
-                         verbose::Bool=false,
-                         warm_start::Bool=true)::QPALMsettings
+function QPALMsettings(;max_iter::Int64=10000,
+						inner_max_iter::Int64=100,
+						eps_abs::Float64=1.0e-6,
+						eps_rel::Float64=1.0e-6,
+						eps_abs_in::Float64=1.0,
+						eps_rel_in::Float64=1.0,
+						rho::Float64=0.1,
+						eps_prim_inf::Float64=1.0e-4,
+						eps_dual_inf::Float64=1.0e-4,
+						theta::Float64=0.25,
+						delta::Float64=100.0,
+						sigma_max::Float64=1.0e9,
+						proximal::Bool=true,
+						gamma_init::Float64=10.0,
+						gamma_upd::Float64=10.0,
+						gamma_max::Float64=1.0e7,
+						scaling::Int64=2,
+						nonconvex::Bool=false,
+						verbose::Bool=false,
+						print_iter::Int64=1,
+						warm_start::Bool=true,
+						reset_newton_iter::Int64=100,
+						enable_dual_termination::Bool=false,
+						dual_objective_limit::Float64=1.0e20,
+						time_limit::Float64=1.0e20)::QPALMsettings
 
 
 
-    return QPALMsettings(max_iter,eps_abs,eps_rel,eps_abs_in,eps_rel_in,rho,eps_prim_inf,
-                        eps_dual_inf,theta,delta,tau_init,proximal,gamma_init,
-                        gamma_upd,gamma_max,scaling,nonconvex,verbose,warm_start)
+    return QPALMsettings(max_iter,inner_max_iter,eps_abs,eps_rel,eps_abs_in,eps_rel_in,
+						 rho,eps_prim_inf,eps_dual_inf,theta,delta,sigma_max,proximal,
+						 gamma_init,gamma_upd,gamma_max,scaling,nonconvex,verbose,print_iter,
+						 warm_start,reset_newton_iter,enable_dual_termination,dual_objective_limit,
+						 time_limit)
 end
 
 
