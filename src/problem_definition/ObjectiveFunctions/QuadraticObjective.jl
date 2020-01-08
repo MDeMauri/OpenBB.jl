@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-27T17:14:55+02:00
+# @Last modified time: 2020-01-08T19:16:04+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -109,4 +109,18 @@ function add!(objective1::QuadraticObjective,objective2::T)::Nothing where T<:Ab
         add!(objective1,QuadraticObjective(objective2))
         return
     end
+end
+
+
+
+# evaluate the objective function in the given point
+function evaluate(objective::QuadraticObjective{T1,T2},point::Array{Float64,1})::Float64 where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    @assert length(point) == size(objective.Q,2)
+    return .5*point'*objective.Q*point + objective.L'*b
+end
+
+# evaluate the jacobian of the objective function in the given point
+function evaluate_jacobian(objective::QuadraticObjective{T1,T2},point::Array{Float64,1})::AbstractArray where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    @assert length(point) == size(objective.Q,2)
+    return point'*objective.Q + objective.L'
 end

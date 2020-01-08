@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T17:09:38+02:00
+# @Last modified time: 2020-01-08T19:15:47+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -104,4 +104,17 @@ function add!(objective1::LinearObjective,objective2::T)::Nothing where T<:Abstr
         add!(objective1,LinearObjective(objective2))
         return
     end
+end
+
+
+# evaluate the objective function in the given point
+function evaluate(objective::LinearObjective{T},point::Array{Float64,1})::Float64  where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    @assert length(point) == length(objective.L)
+    return objective.L'*b
+end
+
+# evaluate the jacobian of the objective function in the given point
+function evaluate_jacobian(objective::LinearObjective{T},point::Array{Float64,1})::AbstractMatrix  where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    @assert length(point) == length(objective.L)
+    return copy(objective.L)'
 end

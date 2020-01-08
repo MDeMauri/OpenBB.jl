@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T12:52:17+01:00
+# @Last modified time: 2019-12-11T17:53:36+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -133,7 +133,7 @@ end
 
 function insert_variables!(constraintSet::LinearConstraintSet{T},numVariables::Int,insertionPoint::Int)::Nothing where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     @assert numVariables>=0
-    @assert 0<=insertionPoint<=get_numVariables(constraintSet)+1
+    @assert 0<insertionPoint<=get_numVariables(constraintSet)+1
     constraintSet.A = hcat(constraintSet.A[:,1:insertionPoint-1],zeros(size(constraintSet.A,1),numVariables),constraintSet.A[:,insertionPoint:end])
     return
 end
@@ -177,4 +177,10 @@ function permute_constraints!(constraintSet::LinearConstraintSet{T},permutation:
     constraintSet.loBs = constraintSet.loBs[permutation]
     constraintSet.upBs = constraintSet.upBs[permutation]
     return
+end
+
+# give the value of the constraints in the given point
+function evaluate(constraintSet::LinearConstraintSet{T},point::Array{Float64,1})::Array{Float64,1} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
+    @assert length(point) == size(constraintSet.A,2)
+    return constraintSet.A*point
 end
