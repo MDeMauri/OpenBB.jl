@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: osqp_wrong_result.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T17:05:00+02:00
+# @Last modified time: 2019-12-10T23:44:23+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -34,7 +34,7 @@ Atmp = vcat(sparse(Matrix(1.0I,1399,1399)),A)
 ltmp = vcat(vl,l)
 utmp = vcat(vu,u)
 model = OSQP.Model()
-OSQP.setup!(model;P=Q,q=L,A=Atmp,l=ltmp,u=utmp,eps_prim_inf=1e-4,eps_rel=1e-6,eps_abs=1e-6,max_iter=100000,scaled_termination=false)
+OSQP.setup!(model;P=Q,q=L,A=Atmp,l=ltmp,u=utmp,eps_prim_inf=1e-4,eps_rel=1e-6,eps_abs=1e-6,max_iter=100000,scaled_termination=false,verbose=false)
 sol1 = OSQP.solve!(model)
 println("- status: ",sol1.info.status," objective ",sol1.info.obj_val," # iterations: ",sol1.info.iter)
 
@@ -61,7 +61,7 @@ Atmp = vcat(sparse(Matrix(1.0I,1399,1399)),A)
 ltmp = vcat(vl,l)
 utmp = vcat(vu,u)
 model = QPALM.Model()
-QPALM.setup!(model;Q=Q,q=L,A=Atmp,bmin=ltmp,bmax=utmp,eps_prim_inf=1e-4,eps_rel=1e-6,eps_abs=1e-6)
+QPALM.setup!(model;Q=Q,q=L,A=Atmp,bmin=ltmp,bmax=utmp,eps_prim_inf=1e-4,eps_rel=1e-6,eps_abs=1e-6,verbose=false)
 # sol2 = QPALM.solve!(model)
 QPALM.update!(model,bmin=ltmp,bmax=utmp)
 sol2 = QPALM.solve!(model)
@@ -79,20 +79,3 @@ dual = dual[tokeep]
 primal = sol2.x
 dual_objective = -0.5*transpose(dual)*A_*Qinv*transpose(A_)*dual - transpose(dual)*bounds
 println(" - dual objective: ",dual_objective,"\n")
-
-
-println("solving with GUROBI")
-using Gurobi
-env = Gurobi.Env()
-setparam!(env,"Method",2)
-Gurobi.setparams!(env;FeasibilityTol=1e-4)
-model = Gurobi.gurobi_model(env, H = Q,
-                                 f = L,
-                                 A = vcat(-Atmp,Atmp),
-                                 b = vcat(-ltmp,utmp))
-Gurobi.update_model!(model)
-time = @elapsed Gurobi.optimize(model)
-info_primal = Gurobi.get_solution(model)
-info_status = Gurobi.get_status(model)
-info_obj = Gurobi.get_objval(model)
-println("- status: ",info_status," objective ",info_obj," # iterations: ",NaN,"\n")

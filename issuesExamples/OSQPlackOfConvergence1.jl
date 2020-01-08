@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQPlackOfConvergence.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-08-30T17:42:18+02:00
+# @Last modified time: 2019-12-10T23:47:43+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -28,8 +28,8 @@ y = [99.9639, 0.0272168, -0.00617923, -50.0001, -4.87981e-18, -0.056103, 0.0, 0.
 println("solving with QPALM")
 using QPALM
 model = QPALM.Model()
-QPALM.setup!(model;Q=Q,q=L,A=A,bmin=l,bmax=u,eps_abs=2e-3,eps_rel=2e-3)
-# QPALM.update!(model,bmin=l,bmax=u)
+QPALM.setup!(model;Q=Q,q=L,A=A,bmin=l,bmax=u,eps_abs=2e-3,eps_rel=2e-3,max_iter=10000,verbose=false)
+QPALM.warm_start!(model,x_warm_start=x,y_warm_start=y)
 sol = QPALM.solve!(model)
 println(" - status: ",sol.info.status," # iterations: ",sol.info.iter)
 println(" - primal: ",sol.x)
@@ -38,7 +38,7 @@ println(" - primal: ",sol.x)
 println("solving with OSQP")
 using OSQP
 model = OSQP.Model()
-OSQP.setup!(model;P=Q,q=L,A=A,l=l,u=u,eps_abs=2e-3,eps_rel=2e-3,max_iter=10000)
+OSQP.setup!(model;P=Q,q=L,A=A,l=l,u=u,eps_abs=2e-3,eps_rel=2e-3,max_iter=10000,verbose=false)
 OSQP.warm_start!(model,x=x,y=y)
 sol = OSQP.solve!(model)
 println(" - status: ",sol.info.status," # iterations: ",sol.info.iter,"\n")
