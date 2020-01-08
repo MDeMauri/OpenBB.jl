@@ -20,24 +20,7 @@ module OpenBB
     using SharedArrays
     using Pkg: installed
 
-    # select the subsolvers to use
-    function withOSQP()::Bool
-        return "OSQP" in keys(installed())
-    end
-    function withGUROBI()::Bool
-        return "Gurobi" in keys(installed())
-    end
-    function withQPALM()::Bool
-        return "QPALM" in keys(installed())
-    end
 
-    function get_available_subsolvers()::Array{String,1}
-        out = String[]
-        if withOSQP() push!(out,"OSQP") end
-        if withQPALM() push!(out,"QPALM") end
-        if withGUROBI() push!(out,"GUROBI") end
-        return out
-    end
 
     # use or not the MPC addon (the folder containing the mpc toolbox should be placed beside the one containing OpenBB)
     function withMPCaddon()
@@ -57,16 +40,8 @@ module OpenBB
     # some utilities
     include("./utilities/utilities.jl")
 
-    # subsolvers interfaces
-    if withOSQP()
-        include("./subsolvers_interfaces/OSQP_interface.jl")
-    end
-    if withGUROBI()
-        include("./subsolvers_interfaces/GUROBI_interface.jl")
-    end
-    if withQPALM()
-        include("./subsolvers_interfaces/QPALM_interface.jl")
-    end
+    # include the subsolvers
+    include("./subsolvers_interfaces/subsolvers_interfaces.jl")
 
     # include heuristics
     include("./heuristics/heuristics.jl")
