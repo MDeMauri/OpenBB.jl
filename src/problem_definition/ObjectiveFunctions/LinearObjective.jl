@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-01-08T19:15:47+01:00
+# @Last modified time: 2020-01-08T19:20:38+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -117,4 +117,10 @@ end
 function evaluate_jacobian(objective::LinearObjective{T},point::Array{Float64,1})::AbstractMatrix  where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     @assert length(point) == length(objective.L)
     return copy(objective.L)'
+end
+
+# evaluate the jacobian of the objective function in the given point
+function evaluate_hessian(objective::LinearObjective{T},point::Array{Float64,1})::AbstractMatrix  where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    @assert length(point) == length(objective.L)
+    return spzeros(length(point),length(point))
 end

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QuadraticObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-01-08T19:16:04+01:00
+# @Last modified time: 2020-01-08T19:18:57+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -123,4 +123,10 @@ end
 function evaluate_jacobian(objective::QuadraticObjective{T1,T2},point::Array{Float64,1})::AbstractArray where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     @assert length(point) == size(objective.Q,2)
     return point'*objective.Q + objective.L'
+end
+
+# evaluate the hessian of the objective function in the given point
+function evaluate_hessian(objective::QuadraticObjective{T1,T2},point::Array{Float64,1})::AbstractArray where T1<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}  where T2<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    @assert length(point) == size(objective.Q,2)
+    return objective.Q
 end

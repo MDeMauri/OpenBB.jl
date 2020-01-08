@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearConstraintSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-12-11T17:53:36+01:00
+# @Last modified time: 2020-01-08T19:21:45+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -183,4 +183,10 @@ end
 function evaluate(constraintSet::LinearConstraintSet{T},point::Array{Float64,1})::Array{Float64,1} where T<:Union{Array{Float64,2},SparseMatrixCSC{Float64,Int}}
     @assert length(point) == size(constraintSet.A,2)
     return constraintSet.A*point
+end
+
+# evaluate the jacobian of the constraints in the given point
+function evaluate_jacobian(constraintSet::LinearConstraintSet{T},point::Array{Float64,1})::AbstractMatrix  where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
+    @assert length(point) == length(objective.L)
+    return copy(constraintSet.A)
 end
