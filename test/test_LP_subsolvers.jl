@@ -1,9 +1,9 @@
 # @Author: Massimo De Mauri <massimo>
-# @Date:   2019-03-05T15:01:45+01:00
+# @Date:   2020-01-08T16:52:49+01:00
 # @Email:  massimo.demauri@gmail.com
-# @Filename: test_QP.jl
+# @Filename: test_LP_subsolvers.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-01-08T16:50:36+01:00
+# @Last modified time: 2020-01-08T16:57:52+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -11,22 +11,18 @@ using OpenBB
 using LinearAlgebra
 using SparseArrays
 
-function test_QP_subsolver(subsolver)
+function test_LP_subsolver(subsolver)
 
-    if subsolver == "OSQP"
-        subsolverSettings = OpenBB.OSQPsettings()
-    elseif subsolver == "GUROBI"
-        subsolverSettings = OpenBB.GUROBIsettings()
-    elseif subsolver == "QPALM"
-        subsolverSettings = OpenBB.QPALMsettings()
+    if subsolver == "CLP"
+        subsolverSettings = OpenBB.CLPsettings()
     else
-        error("Subsolver Unknown")
+        error("Subsolver Unknown "*subsolver)
     end
 
     print(" - ")
     # create first problem
-    problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=Matrix(1.0I,4,4,),L=[-.5,0.,0.,0.]),
-                             cnsSet=OpenBB.LinearConstraintSet(A=ones(0,4),loBs=Float64[],upBs=Float64[]),
+    problem = OpenBB.Problem(objFun=OpenBB.LinearObjective(L=[-.5,0.,0.,0.]),
+                             cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[0.0],upBs=Float64[0.0]),
                              varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
     workspace = OpenBB.setup(problem,OpenBB.BBsettings(interactiveMode=true,verbose=false,statusInfoPeriod=0.01,numProcesses=1),subsolverSettings)
     result0 = OpenBB.solve!(workspace)
@@ -36,7 +32,7 @@ function test_QP_subsolver(subsolver)
     result1 = OpenBB.solve!(workspace)
 
     # Basic usage of OpenBB for mixed-integer quadratic problems
-    problem2 = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=sparse([1,2,3,4],[1,2,3,4],[1.,2.,3.,4.]),L=[2.,2.,2.,2.]),
+    problem2 = OpenBB.Problem(objFun=OpenBB.LinearObjective(L=[2.,2.,2.,2.]),
                              cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[1.],upBs=[1.]),
                              varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
 
@@ -50,7 +46,7 @@ function test_QP_subsolver(subsolver)
 end
 
 for subsolver_info in OpenBB.get_available_subsolvers()
-    if subsolver_info[2] == "QP"
-        test_QP_subsolver(subsolver_info[1])
+    if subsolver_info[2] == "LP"
+        test_LP_subsolver(subsolver_info[1])
     end
 end
