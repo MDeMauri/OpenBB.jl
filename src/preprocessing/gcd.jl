@@ -33,11 +33,12 @@ function preprocess_gcd!( A::SparseMatrixCSC{Float64,Int},
             apply = false
 
             # Make multipliers integer
-            if !any(x->isinteger(x), multipliers)
+            if any(x->(!isinteger(x)), multipliers)
                 fractions = filter( x -> x != 0, unique(rem.(multipliers, 1)))
-                commonMultiple = lcm.(Int.(floor.(inv.(p)+eps())))
+                inverse = inv.(fractions).+eps()
+                commonMultiple = lcm(Int.(floor.(inverse)))
                 multipliers = commonMultiple * multipliers
-                if any(x->isinteger(x), multipliers)
+                if !any(x->(!isinteger(x)), multipliers)
                     apply = true
                 end
             else

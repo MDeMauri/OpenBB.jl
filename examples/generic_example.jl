@@ -36,6 +36,9 @@ problem = OpenBB.Problem(objFun=OpenBB.QuadraticObjective(Q=sparse(zeros(length(
 
 workspace = OpenBB.setup(
                     problem,
-                    OpenBB.BBsettings(withBoundsPropagation=false, verbose=true,interactiveMode=true,numProcesses=1),
+                    OpenBB.BBsettings(withBoundsPropagation=false,
+                                      verbose=true,
+                                      interactiveMode=true,
+                                      numProcesses=1),
                     OpenBB.GUROBIsettings())
 result = OpenBB.solve!(workspace)
