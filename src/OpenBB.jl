@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T13:49:31+01:00
+# @Last modified time: 2020-02-26T21:34:30+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -20,18 +20,15 @@ module OpenBB
     using SharedArrays
     using Pkg: installed
 
-
-
     # use or not the MPC addon (the folder containing the mpc toolbox should be placed beside the one containing OpenBB)
     function withMPCaddon()
         return true
     end
 
+    # types definitions
+    include("./types/types.jl")
 
-    # language interfaces
-    include("./problem_definition/problem_definition.jl")
-
-    # solvers
+    # main solver
     include("./branch_and_bound/BB.jl")
 
     # code for preprocessing

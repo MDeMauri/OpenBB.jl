@@ -4,13 +4,12 @@
 # @Project: OpenBB
 # @Filename: BB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-06-14T11:47:04+02:00
+# @Last modified time: 2020-02-26T21:29:12+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 ######## include components ######
-include("./types/types.jl")
 include("./priority_rules/priority_rules.jl")
 include("./pseudo_costs_initialization/pseudo_costs_initialization.jl")
 include("./setup_update_inspect/setup_update_inspect.jl")

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: LinearObjective.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-01-08T19:20:38+01:00
+# @Last modified time: 2020-02-26T21:23:30+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -22,7 +22,6 @@ end
 function LinearObjective{T}(objective::LinearObjective)::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     return LinearObjective(T(objective.L))
 end
-
 
 function LinearObjective{T}(objective::QuadraticObjective)::LinearObjective{T} where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     @assert all(objective.Q .== 0)
@@ -123,4 +122,52 @@ end
 function evaluate_hessian(objective::LinearObjective{T},point::Array{Float64,1})::AbstractMatrix  where T<:Union{Array{Float64,1},SparseVector{Float64,Int}}
     @assert length(point) == length(objective.L)
     return spzeros(length(point),length(point))
+end
+
+
+# Serialization (not fundamental) used to store or to send
+function LinearObjective(serial::SerialData;offset::Int=0)::Tuple{LinearObjective,Int}
+    # header
+    numVars = Int(serial[offset+1])
+    offset += 1
+    # data
+    objFun = LinearObjective(serial[offset+1:offset+numVars])
+    offset += numVars
+
+    return (objFun,offset)
+end
+
+
+function serial_size(objFun::LinearObjective)::Int
+    # estimate necessary memory
+    return length(objFun.L) + 1
+end
+
+
+function serialize(objFun::LinearObjective)::SerialData
+
+    # allocate memory
+    serial = SerialData(Array{Float64,1}(undef,serial_size(objFun)))
+
+    # write serialized data
+    serialize_in!(serial,objFun,offset=0)
+    return serial
+end
+
+
+function serialize_in!(serial::SerialData,objFun::LinearObjective;offset::Int=0)::Int
+
+    # check input
+    numVars = size(objFun.L,1)
+    @assert length(serial) >= offset + 1 + numVars
+
+    # header
+    serial[offset+1] = numVars
+    offset += 1
+
+    # data
+    serial[offset+1:offset+numVars] = objFun.L
+    offset += numVars
+
+    return offset
 end

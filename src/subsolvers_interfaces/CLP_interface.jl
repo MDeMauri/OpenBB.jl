@@ -95,7 +95,7 @@ function solve!(node::BBnode,workspace::CLPworkspace)::Tuple{Int8,Float64}
    # collect info on the problem
 	numVars = get_size(workspace.problem.varSet)
 	numCnss = get_size(workspace.problem.cnsSet)
-	withCuts = nnz(node.cuts) > 0
+	withCuts = nnz(sparse(node.cuts.A)) > 0
 
 	# solve the current problem
 	tmpModel = CLP.ClpModel()

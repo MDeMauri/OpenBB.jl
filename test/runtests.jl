@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: runtests.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T19:24:08+02:00
+# @Last modified time: 2020-02-26T21:26:28+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 using OpenBB
@@ -15,6 +15,7 @@ include("./test_problem_definition_update.jl")
 include("./test_preprocessing.jl")
 include("./test_flat_interface.jl")
 include("./test_QP_subsolvers.jl")
+include("./test_serialization.jl")
 
 if OpenBB.withMPCaddon()
     include(Base.source_dir()*"../../../MPCforOpenBB/test/run_tests.jl")

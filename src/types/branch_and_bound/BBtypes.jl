@@ -1,13 +1,11 @@
-# @Author: Massimo De Mauri <massimodemauri>
-# @Date:   2019-02-06T16:19:47+01:00
+# @Author: Massimo De Mauri <massimo>
+# @Date:   2020-02-26T21:31:14+01:00
 # @Email:  massimo.demauri@gmail.com
-# @Project: OpenBB
-# @Filename: types.jl
+# @Filename: BBtypes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-16T22:34:02+02:00
+# @Last modified time: 2020-02-26T21:31:36+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
-
 
 ######### types definition ##########
 include("./BBnode.jl")

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: update_nodes.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-21T13:50:11+01:00
+# @Last modified time: 2020-02-26T16:31:25+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -39,7 +39,7 @@ function update_sharedMemory!(workspace::BBworkspace{T1,T2,T3})::Nothing where T
 		# construct new communication Channels
 		communicationChannels = Array{BBnodeChannel,1}(undef,workspace.settings.numProcesses)
 		for k in 1:workspace.settings.numProcesses
-			communicationChannels[k] = BBnodeChannel(flat_size(numVars,numCnss,workspace.settings.maxNumberOfLocalCuts))
+			communicationChannels[k] = BBnodeChannel(max_serial_size_BBnode(numVars,numCnss,workspace.settings.maxNumberOfLocalCuts))
 		end
 		workspace.sharedMemory.inputChannel = communicationChannels[1]
 		workspace.sharedMemory.outputChannel = communicationChannels[2]

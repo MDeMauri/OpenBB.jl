@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: problem_definitions.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T12:49:02+01:00
+# @Last modified time: 2020-02-26T17:38:41+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -91,4 +91,82 @@ end
 
 function get_constraint_sparsity(problem::Problem,index::Int)::Any
     return get_sparsity(problem.cnsSet,index)
+end
+
+
+
+# serialization (Not fundamental. Used to store and send problems)
+function Problem(serial::SerialData;offset::Int=0)::Tuple{Problem,Int}
+
+    # check input
+    @assert length(serial) >= offset + 2
+
+    # header
+    cnsType = Int(serial[offset+1])
+    objType = Int(serial[offset+2])
+    offset += 2
+
+    (varSet,offset) = VariableSet(serial,offset=offset)
+
+    if cnsType == 1  # LinearConstraintSet
+        (cnsSet,offset) = LinearConstraintSet(serial,offset=offset)
+    else
+        @error "Constraint Set Type Unknown"
+    end
+
+
+    if objType == 1 # LinearObjective
+        (objFun,offset) = LinearObjective(serial,offset=offset)
+    elseif objType == 2 # QuadraticObjective
+        (objFun,offset) = QuadraticObjective(serial,offset=offset)
+    else
+        @error "Objective Function Type Unknown"
+    end
+
+    return (Problem(varSet=varSet,cnsSet=cnsSet,objFun=objFun),offset)
+end
+
+
+function serial_size(problem::Problem)::Int
+    return 2 + serial_size(problem.varSet) + serial_size(problem.cnsSet) + serial_size(problem.objFun)
+end
+
+function serialize(problem::Problem)::SerialData
+    # assign memory
+    serial = SerialData(Array{Float64,1}(undef,serial_size(problem)))
+    # serialize
+    serialize_in!(serial,problem,offset=0)
+    return serial
+end
+
+function serialize_in!(serial::SerialData,problem::Problem;offset::Int=0)::Int
+
+    # check input
+    @assert length(serial) >= offset + 2 + serial_size(problem.varSet) + serial_size(problem.cnsSet) + serial_size(problem.objFun)
+
+    # header
+    if problem.cnsSet isa LinearConstraintSet
+        serial[offset+1] = 1.0
+    else
+        @error "Serialization not implemented for "*str(typeof(problem.cnsSet))
+    end
+    if problem.objFun isa LinearObjective
+        serial[offset+2] = 1.0
+    elseif problem.objFun isa QuadraticObjective
+        serial[offset+2] = 2.0
+    else
+        @error "Serialization not implemented for "*str(typeof(problem.objFun))
+    end
+    offset += 2
+
+    # variable set
+    offset = serialize_in!(serial,problem.varSet,offset=offset)
+
+    # constraint set
+    offset = serialize_in!(serial,problem.cnsSet,offset=offset)
+
+    # objective function
+    offset = serialize_in!(serial,problem.objFun,offset=offset)
+
+    return offset
 end

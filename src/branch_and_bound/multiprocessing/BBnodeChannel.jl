@@ -1,9 +1,9 @@
 # @Author: Massimo De Mauri <massimo>
 # @Date:   2019-05-23T11:47:55+02:00
 # @Email:  massimo.demauri@gmail.com
-# @Filename: communication.jl
+# @Filename: BBnodeChannel.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-21T14:13:19+01:00
+# @Last modified time: 2020-02-26T17:07:48+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -40,8 +40,11 @@ function put!(channel::BBnodeChannel,node::T;timeout::Float64=Inf)::Nothing wher
     # lock the memory space
     channel.state[1] = true
 
+    # create a SerialData object pointing to the reserved shared memory space
+    serial_ = SerialData(channel.memorySpace)
+
     # copy the node into the reserved shared memory space
-    flatten_in!(node,channel.memorySpace)
+    serialize_in!(serial_,node)
 
     # declare the memory space full
     channel.state[2] = true
@@ -74,7 +77,7 @@ function take!(channel::BBnodeChannel;timeout::Float64=Inf)
     channel.state[1] = true
 
     # read the memory space
-    node = rebuild_node(channel.memorySpace)
+    node,_ = BBnode(SerialData(channel.memorySpace))
 
     # declare the memory space empty
     channel.state[2] = false

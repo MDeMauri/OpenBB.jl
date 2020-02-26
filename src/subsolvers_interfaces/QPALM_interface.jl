@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-12-10T18:11:12+01:00
+# @Last modified time: 2020-02-19T14:44:53+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -170,7 +170,7 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
 	# collect info on the problem
 	numVars = get_size(workspace.problem.varSet)
 	numCnss = get_size(workspace.problem.cnsSet)
-	withCuts = nnz(node.cuts) > 0
+	withCuts = nnz(sparse(node.cuts.A)) > 0
 
 	# check if local cuts are present
     if withCuts # there are some local cuts
@@ -239,7 +239,7 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
 		end
         objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
         newObjVal = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
-        if newObjVal >= node.ObjVal - node.objGap
+        if newObjVal >= node.objVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible
             node.objVal = newObjVal
         else

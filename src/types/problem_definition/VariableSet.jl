@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: VariableSet.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T11:58:30+01:00
+# @Last modified time: 2020-02-26T20:38:33+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -202,4 +202,73 @@ function update_bounds!(variableSet::VariableSet,indices::Array{Int,1};loBs::Arr
         @. variableSet.upBs[indices] = upBs
     end
     return
+end
+
+
+# Serialization (not fundamental) used to store or send
+function VariableSet(serial::SerialData;offset::Int=0)::Tuple{VariableSet,Int}
+
+    # read header
+    numVars = Int(serial[offset+1])
+    numDsc = Int(serial[offset+2])
+    offset += 2
+
+    # check input
+    @assert length(serial) >= offset + 2*numVars + 2*numDsc
+
+    # build the variable set
+    varSet = VariableSet(loBs=serial[offset+1:offset+numVars],
+                        upBs=serial[offset+numVars+1:offset+2*numVars],
+                        dscIndices=Array{Int,1}(serial[offset+2*numVars+1:offset+2*numVars+numDsc]),
+                        sos1Groups=Array{Int,1}(serial[offset+2*numVars+numDsc+1:offset+2*numVars+2*numDsc]))
+
+    return (varSet,offset + 2*numVars + 2*numDsc)
+end
+
+
+function serial_size(varSet::VariableSet)::Int
+    numVars = get_size(varSet)
+    numDsc = get_numDiscrete(varSet)
+    return 2 + 2*numVars + 2*numDsc
+end
+
+function serialize(varSet::VariableSet)::SerialData
+    # allocate memory
+    numVars = get_size(varSet)
+    numDsc = get_numDiscrete(varSet)
+    serial = SerialData(Array{Float64,1}(undef,2 + 2*numVars + 2*numDsc))
+
+    serialize_in!(serial,varSet,offset = 0)
+    return serial
+end
+
+function serialize_in!(serial::SerialData,varSet::VariableSet;offset::Int=0)::Int
+
+    # check input
+    numVars = get_size(varSet)
+    numDsc = get_numDiscrete(varSet)
+    @assert length(serial) >= 2 + 2*numVars + 2*numDsc + offset
+
+    # header
+    serial[offset+1] = numVars
+    serial[offset+2] = numDsc
+    offset += 2
+
+    # lower bounds
+    serial[offset+1:offset+numVars] = varSet.loBs
+    offset += numVars
+
+    # upper bounds
+    serial[offset+1:offset+numVars] = varSet.upBs
+    offset += numVars
+
+    # discrete indices
+    serial[offset+1:offset+numDsc] = Array{Float64,1}(varSet.dscIndices)
+    offset += numDsc
+
+    # sos1 groups
+    serial[offset+1:offset+numDsc] = Array{Float64,1}(varSet.sos1Groups)
+    offset += numDsc
+
+    return offset
 end

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T15:25:14+01:00
+# @Last modified time: 2020-02-19T14:41:57+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -160,7 +160,7 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
 	# collect info on the problem
 	numVars = get_size(workspace.problem.varSet)
 	numCnss = get_size(workspace.problem.cnsSet)
-	withCuts = nnz(node.cuts) > 0
+	withCuts = nnz(sparse(node.cuts.A)) > 0
 
     # check if local cuts are present
     if withCuts # there are some local cuts
@@ -228,7 +228,7 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
 		end
         objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
         newObjVal = 1/2 * transpose(node.primal) * objFun.Q *node.primal + transpose(objFun.L) * node.primal
-        if newObjVal >= node.ObjVal - node.objGap
+        if newObjVal >= node.objVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible
             node.objVal = newObjVal
         else

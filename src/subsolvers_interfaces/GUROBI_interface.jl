@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-22T12:56:43+01:00
+# @Last modified time: 2020-02-19T15:54:09+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -150,7 +150,7 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
 	numCnss = get_numConstraints(workspace.problem)
 
     # check if local cuts are present
-    if nnz(node.cuts) > 0 # there are some local cuts
+    if nnz(sparse(node.cuts.A)) > 0 # there are some local cuts
 
         # construct a temporary problem definition (to accomodate the cuts)
         tmpProblem = deepcopy(workspace.problem)
@@ -199,14 +199,14 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         node.primal = Gurobi.get_solution(model)
         node.bndDual = zeros(numVars)
         node.cnsDual = zeros(numCnss)
-        node.objGap = workspace.settings.OptimalityTol
+        node.objGap = 0
         node.objVal = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
     elseif status in [3,4]
         status = 1 # "infeasible"
         node.primal = NaNs(numVars)
         node.bndDual = NaNs(numVars)
         node.cnsDual = NaNs(numCnss)
-        node.objGap = workspace.settings.OptimalityTol
+        node.objGap = 0
         node.objVal = Inf
     elseif status in [7,8,10,11,13]
         status = 2 # "unreliable"
@@ -215,13 +215,13 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         node.bndDual = zeros(numVars)
         node.cnsDual = zeros(numCnss)
         newObjVal = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
-        if newObjVal >= node.ObjVal - node.objGap
+		@warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
+		if newObjVal >= node.objVal - node.objGap
             node.objGap = newObjVal - node.objVal + node.objGap
             node.objVal = newObjVal
         else
             node.objGap = Inf # gurobi doesn't give enough information to estimate the gap
             node.objVal = newObjVal
-            @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
         end
     elseif status in [1,5,12]
         status = 3 # "error"
@@ -230,5 +230,6 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         @error "Subsolver unknown status: "*string(Gurobi.get_status(model))*" (code:"*string(status)*")"
     end
 
+	@info status, node.objVal
     return (status, runtime)
 end
