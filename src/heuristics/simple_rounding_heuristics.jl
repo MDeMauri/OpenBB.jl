@@ -3,24 +3,23 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: simple_rounding_heuristics.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-02T15:12:06+02:00
+# @Last modified time: 2020-02-28T14:46:29+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
-function simple_rounding_heuristics(node::BBnode, workspace::BBworkspace)::BBnode
+function simple_rounding_heuristics(node::BBnode,workspace::BBworkspace)::Array{BBnode,1}
 
     # round the primal info and fix the discrete variables
-    newPrimal = copy(node.primal)
-    newLoBs = -Infs(length(node.primal))
-    newUpBs =  Infs(length(node.primal))
-    @. newPrimal[workspace.problem.varSet.dscIndices]  =
-       newLoBs[workspace.problem.varSet.dscIndices]    =
-       newUpBs[workspace.problem.varSet.dscIndices]    = round(newPrimal[workspace.problem.varSet.dscIndices])
+    hNode = deepcopy(node)
+    hNode.primal[workspace.problem.varSet.dscIndices]  =
+    hNode.varLoBs[workspace.problem.varSet.dscIndices] =
+    hNode.varUpBs[workspace.problem.varSet.dscIndices] = round.(hNode.primal[workspace.problem.varSet.dscIndices])
 
-    # return the resulting node
-    BBnode(newPrimal[workspace.problem.varSet.dscIndices],newPrimal[workspace.problem.varSet.dscIndices],
-           newPrimal,copy(node.bndDual),copy(node.cnsDual),
-           0.0,node.objVal,node.pseudoObjective,false)
-
+    if  all(@. workspace.problem.varSet.loBs <= hNode.primal <= workspace.problem.varSet.upBs)
+        # return the resulting node
+        return [hNode]
+    else
+        return BBnode[]
+    end
 end

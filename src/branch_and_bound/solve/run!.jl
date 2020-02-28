@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: run!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-11-21T10:54:17+01:00
+# @Last modified time: 2020-02-28T14:49:20+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -84,35 +84,37 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
                 workspace.activeQueue[end].avgAbsFrac < workspace.settings.roundingHeuristicsThreshold &&
                 (workspace.activeQueue[end].objVal-workspace.status.objLoB)/(1e-10 + workspace.activeQueue[end].objVal) < workspace.settings.roundingHeuristicsThreshold
 
-                node = simple_rounding_heuristics(workspace.activeQueue[end],workspace)
-                solve!(node,workspace)
+                hNodes = simple_rounding_heuristics(workspace.activeQueue[end],workspace)
+                for node in hNodes
+                    solve_node!(node,workspace)
 
-                # new solution?
-                if node.reliable &&
-                    node.objVal < min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
+                    # new solution?
+                    if node.reliable &&
+                        node.objVal < min(workspace.status.objUpB,workspace.settings.objectiveCutoff) - workspace.settings.primalTolerance
 
-                    # insert new solution into the solutionPool
-                    push!(workspace.solutionPool,node)
+                        # insert new solution into the solutionPool
+                        push!(workspace.solutionPool,node)
 
-                    # update the number of solutions found
-                    workspace.status.numSolutions += 1
-                    # update the objective upper bound
-                    workspace.status.objUpB = node.objVal
+                        # update the number of solutions found
+                        workspace.status.numSolutions += 1
+                        # update the objective upper bound
+                        workspace.status.objUpB = node.objVal
 
-                    # update the global objective upper bound and the number of solutions found
-                    if !(workspace.sharedMemory isa NullSharedMemory)
-                        workspace.sharedMemory.stats[1] +=1
-                        if workspace.status.objUpB < workspace.sharedMemory.objectiveBounds[end]
-                            workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
+                        # update the global objective upper bound and the number of solutions found
+                        if !(workspace.sharedMemory isa NullSharedMemory)
+                            workspace.sharedMemory.stats[1] +=1
+                            if workspace.status.objUpB < workspace.sharedMemory.objectiveBounds[end]
+                                workspace.sharedMemory.objectiveBounds[end] = workspace.status.objUpB
+                            end
                         end
-                    end
 
-                    # recompute optimality gaps
-                    if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
-                        workspace.status.absoluteGap = workspace.status.relativeGap = Inf
-                    else
-                        workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
-                        workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
+                        # recompute optimality gaps
+                        if workspace.status.objUpB == Inf || workspace.status.objLoB == -Inf
+                            workspace.status.absoluteGap = workspace.status.relativeGap = Inf
+                        else
+                            workspace.status.absoluteGap = workspace.status.objUpB - workspace.status.objLoB
+                            workspace.status.relativeGap = workspace.status.absoluteGap/(1e-10 + abs(workspace.status.objUpB))
+                        end
                     end
                 end
             end
@@ -126,7 +128,6 @@ function run!(workspace::BBworkspace{T1,T2,T3})::Nothing where T1<:Problem where
 
             # handle the node
             if nodeObjVal > workspace.status.objUpB - workspace.settings.primalTolerance # the node is already suboptimal (the upper-bound might have changed)
-
                 # in interactive mode the suboptimal nodes are stored
                 if workspace.settings.interactiveMode
                     push!(workspace.unactivePool,node)

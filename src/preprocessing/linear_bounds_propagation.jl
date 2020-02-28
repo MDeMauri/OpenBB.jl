@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: linear_bounds_propagation.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-26T13:08:06+02:00
+# @Last modified time: 2020-02-28T13:25:45+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -75,7 +75,6 @@ function bounds_propagation!(row::Int, A::SparseMatrixCSC{Float64,Int64},
 
             if newLoB > newUpB
                   # Found infeasibility!
-                  # @info i, indices[i], varLoBs, varUpBs, newLoB, newUpB
                   return false, updatedVars
             end
 
