@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-19T14:44:53+01:00
+# @Last modified time: 2020-02-28T12:47:23+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -48,8 +48,8 @@ function QPALMsettings(;max_iter::Int64=10000,
 						eps_abs_in::Float64=1.0,
 						eps_rel_in::Float64=1.0,
 						rho::Float64=0.1,
-						eps_prim_inf::Float64=1.0e-4,
-						eps_dual_inf::Float64=1.0e-4,
+						eps_prim_inf::Float64=1.0e-6,
+						eps_dual_inf::Float64=1.0e-6,
 						theta::Float64=0.25,
 						delta::Float64=100.0,
 						sigma_max::Float64=1.0e9,

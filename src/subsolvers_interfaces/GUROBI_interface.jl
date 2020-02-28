@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-27T10:37:22+01:00
+# @Last modified time: 2020-02-28T13:26:03+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -230,6 +230,6 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         @error "Subsolver unknown status: "*string(Gurobi.get_status(model))*" (code:"*string(status)*")"
     end
 
-	@info status, node.objVal
+
     return (status, runtime)
 end
