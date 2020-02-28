@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: insert_node.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-10-23T18:21:12+02:00
+# @Last modified time: 2020-02-28T17:22:42+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -42,18 +42,18 @@ end
 # insert a node into the BBtree
 function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
 
-    if isnan(node.objVal) # no info on the node
+    if node.objUpB - node.objUpB == Inf # no info on the node
         # insert the node as first
         push!(workspace.activeQueue,node)
 
-    elseif node.objVal - node.objGap > workspace.status.objUpB - workspace.settings.primalTolerance # the node is suboptimal
+    elseif node.objLoB > workspace.status.objUpB - workspace.settings.primalTolerance # the node is suboptimal
 
         # in interactive mode the suboptimal nodes are stored
         if workspace.settings.interactiveMode
             push!(workspace.unactivePool,node)
         end
 
-    elseif node.objVal - node.objGap > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the node objective is greater than the cutoff
+    elseif node.objLoB > workspace.settings.objectiveCutoff - workspace.settings.primalTolerance # the node objective is greater than the cutoff
 
         # declare the cutoff active
         workspace.status.cutoffActive = true
@@ -63,7 +63,7 @@ function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
             push!(workspace.unactivePool,node)
         end
 
-    elseif node.avgAbsFrac == 0.0 # a new solution has been found
+    elseif node.avgFractionality == 0.0 # a new solution has been found
 
         if node.reliable || workspace.settings.acceptUnreliableSolutions # the solution is reliable or the algorithm is set to accept unreliable solutions
 
@@ -76,7 +76,7 @@ function insert_node!(workspace::BBworkspace,node::BBnode)::Nothing
             # update the number of solutions found
             workspace.status.numSolutions += 1
             # update the objective upper bound
-            workspace.status.objUpB = node.objVal
+            workspace.status.objUpB = node.objUpB
 
             # update the global objective upper bound and the number of solutions found
             if !(workspace.sharedMemory isa NullSharedMemory)

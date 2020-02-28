@@ -3,14 +3,14 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: branch_and_solve!.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-28T13:25:02+01:00
+# @Last modified time: 2020-02-28T17:23:28+01:00
 # @License: apache 2.0
 # @Copyright: {{copyright}}
 
 function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array{BBnode,1} where T1<:Problem where T2<:AbstractWorkspace where T3<:AbstractSharedMemory
 
     # store useful info on the node (before they get modified)
-    nodeObjVal = node.objVal
+    nodeObjVal = node.objUpB
     nodePrimal = copy(node.primal)
 
     # update the node to the latest version
@@ -23,8 +23,10 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
     end
 
     # create a list of children
-    if node.avgAbsFrac == 0.0 || isnan(node.objVal)
+    if node.objUpB - node.objLoB == Inf  # node yet to solve
         children, branchIndices_dsc, presolveIndices = [node], [0], [0]
+    elseif node.avgFractionality == 0.0 # node already integer
+        children, branchIndices_dsc, presolveIndices = [node], [], []
     else
         children, branchIndices_dsc, presolveIndices = branch!(node,workspace)
     end
@@ -32,18 +34,22 @@ function branch_and_solve!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Array
     # solve all the children
     for k in 1:length(children)
         # Preprocess & solve
-        if preprocess!(children[k],workspace,presolveIndices,
-                       withBoundsPropagation=workspace.settings.withBoundsPropagation)
+        if length(presolveIndices) == 0
             solve_node!(children[k],workspace)
         else
-            children[k].objVal = Inf
+            if preprocess!(children[k],workspace,presolveIndices,
+                           withBoundsPropagation=workspace.settings.withBoundsPropagation)
+                solve_node!(children[k],workspace)
+            else
+                children[k].objUpB = Inf
+            end
         end
 
         # update pseudoCosts
-        if !nodeJustUpdated && branchIndices_dsc[k]>0 && children[k].reliable && children[k].objVal < Inf
+        if !nodeJustUpdated && branchIndices_dsc[k]>0 && children[k].reliable && children[k].objUpB < Inf
 
             # compute objective and primal variation
-            deltaObjective = max(children[k].objVal-nodeObjVal,workspace.settings.primalTolerance) # the max filters out small numerical errors
+            deltaObjective = max(children[k].objUpB-nodeObjVal,workspace.settings.primalTolerance) # the max filters out small numerical errors
             deltaVariable = children[k].primal[workspace.problem.varSet.dscIndices[branchIndices_dsc[k]]] - nodePrimal[workspace.problem.varSet.dscIndices[branchIndices_dsc[k]]]
 
             if deltaVariable < -workspace.settings.primalTolerance
@@ -152,21 +158,21 @@ function solve_node!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Nothing whe
     if any(@. node.varLoBs > node.varUpBs + workspace.settings.primalTolerance) ||
        any(@. node.cnsLoBs > node.cnsUpBs + workspace.settings.primalTolerance)
         ssStatus = 1
-        node.objVal = Inf
+        node.objUpB = Inf
     else
         (ssStatus,info) = solve!(node,workspace.subsolverWS)
     end
 
 
     if ssStatus == 0
-        node.pseudoObjective = node.objVal
+        node.pseudoObj = node.objLoB
         for (k,i) in enumerate(workspace.problem.varSet.dscIndices)
-            node.pseudoObjective +=  min(workspace.problem.varSet.pseudoCosts[1][k,1]*(node.primal[i]-floor(node.primal[i]+workspace.settings.primalTolerance)),
+            node.pseudoObj +=  min(workspace.problem.varSet.pseudoCosts[1][k,1]*(node.primal[i]-floor(node.primal[i]+workspace.settings.primalTolerance)),
                                          workspace.problem.varSet.pseudoCosts[1][k,2]*(ceil(node.primal[i]-workspace.settings.primalTolerance)-node.primal[i]))/length(workspace.problem.varSet.dscIndices)
         end
         node.reliable = true
     elseif ssStatus == 1
-        node.pseudoObjective = Inf
+        node.pseudoObj = Inf
         node.reliable = true
     elseif ssStatus == 2
         node.reliable = false
@@ -180,6 +186,6 @@ function solve_node!(node::BBnode,workspace::BBworkspace{T1,T2,T3})::Nothing whe
     # compute node average fractionality and pseudo_cost
     absoluteFractionality = @. abs(node.primal[workspace.problem.varSet.dscIndices] - round(node.primal[workspace.problem.varSet.dscIndices]))
     @. absoluteFractionality =  absoluteFractionality*(absoluteFractionality>workspace.settings.primalTolerance)
-    node.avgAbsFrac = 2. * sum(absoluteFractionality)/length(workspace.problem.varSet.dscIndices)
+    node.avgFractionality = 2.0*sum(absoluteFractionality)/Float64(length(absoluteFractionality))
     return
 end

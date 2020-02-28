@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-19T14:41:57+01:00
+# @Last modified time: 2020-02-28T16:38:04+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -205,10 +205,10 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        node.objVal = sol.info.obj_val
-        node.objGap = max(workspace.settings.eps_abs,
-                          workspace.settings.eps_rel*abs(node.objVal))
-    elseif sol.info.status_val == -3
+        node.objUpB = sol.info.obj_val
+        node.objLoB = node.objUpB - max(workspace.settings.eps_abs,workspace.settings.eps_rel*abs(node.objUpB))
+		node.reliable = true
+	elseif sol.info.status_val == -3
         status = 1 # "infeasible"
         @. node.primal = @. min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
@@ -216,8 +216,9 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        node.objVal = Inf
-        node.objGap = 0.0
+        node.objUpB = Inf
+        node.objLoB = Inf
+		node.reliable = true
     elseif sol.info.status_val in [2,4,3,-6,-2]
         status = 2 # "unreliable
         @. node.primal = min(max(sol.x,node.varLoBs-workspace.settings.eps_prim_inf),node.varUpBs+workspace.settings.eps_prim_inf)
@@ -227,17 +228,12 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
         objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
-        newObjVal = 1/2 * transpose(node.primal) * objFun.Q *node.primal + transpose(objFun.L) * node.primal
-        if newObjVal >= node.objVal - node.objGap
-            node.objGap = newObjVal - node.objVal + node.objGap #TODO: recopute the gap if possible
-            node.objVal = newObjVal
-        else
-            node.objGap = Inf #TODO: recopute the gap if possible
-            @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
+        node.objUpB = 1/2 * transpose(node.primal) * objFun.Q *node.primal + transpose(objFun.L) * node.primal
+        if node.objUpB < node.objLoB
+            node.objLoB = -Inf #TODO: recopute the gap if possible
+			node.reliable = false
         end
-
-
-        @warn "Inaccuracy in node sol, message: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
+        @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"
         @error "Subsover error, status: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"

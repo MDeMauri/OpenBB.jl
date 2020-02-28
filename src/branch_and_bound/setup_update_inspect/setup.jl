@@ -4,7 +4,7 @@
 # @Project: OpenBB
 # @Filename: setup.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-26T16:30:56+01:00
+# @Last modified time: 2020-02-28T17:11:55+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -40,14 +40,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 								NullSharedMemory(),Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),BBupdatesRegister(),bbSettings,false)
 
-		# build the root node and solve it
+		# build the root node and insert it in the queue
 		push!(workspace.activeQueue,BBroot(workspace))
-		if preprocess!(workspace.activeQueue[1],workspace,[0],withBoundsPropagation=workspace.settings.withBoundsPropagation)
-			solve_node!(workspace.activeQueue[1],workspace)
-		else
-			workspace.activeQueue[1].objVal = Inf
-		end
-		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs
 		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.problem.varSet.pseudoCosts,workspace.activeQueue[1])
@@ -86,14 +80,8 @@ function setup(problem::Problem, bbSettings::BBsettings=BBsettings(), ssSettings
 								Array{BBnode,1}(),Array{BBnode,1}(),Array{BBnode,1}(),
 								BBstatus(),BBupdatesRegister(),bbSettings,false)
 
-		# build the root node and solve it
+		# build the root node and
 		push!(workspace.activeQueue,BBroot(workspace))
-		if preprocess!(workspace.activeQueue[1],workspace,[0],withBoundsPropagation=workspace.settings.withBoundsPropagation)
-			solve_node!(workspace.activeQueue[1],workspace)
-		else
-			workspace.activeQueue[1].objVal = Inf
-		end
-		workspace.status.objLoB = workspace.activeQueue[1].objVal - workspace.activeQueue[1].objGap
 
 		# initialize the pseudo costs
 		initialize_pseudoCosts!(workspace.settings.pseudoCostsInitialization,workspace.problem.varSet.pseudoCosts,workspace.activeQueue[1])

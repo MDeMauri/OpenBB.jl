@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: CLP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-01-08T19:03:01+01:00
+# @Last modified time: 2020-02-28T16:35:37+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -151,20 +151,20 @@ function solve!(node::BBnode,workspace::CLPworkspace)::Tuple{Int8,Float64}
 
 	if CLPstatus == 0
 		status = 0 # solved
-		node.objVal = CLP.get_obj_value(tmpModel)
-        node.objGap = CLP.dual_tolerance(tmpModel)
-
+		node.objUpB = CLP.get_obj_value(tmpModel)
+        node.objLoB = node.objUpB - CLP.dual_tolerance(tmpModel)
+		node.reliable = true
 	elseif CLPstatus in [1,2]
        status = 1 # infeasible or unbounded
-	   node.objVal = Inf
-	   node.objGap = 0.0
-
+	   node.objUpB = Inf
+	   node.objLoB = Inf
+	   node.reliable = true
    	elseif CLPstatus == 3
 		status = 2 # unreliable
-		node.objVal = CLP.get_obj_value(tmpModel)
-		node.objGap = CLP.dual_tolerance(tmpModel) #TODO actually compute the dual bound
+		node.objUpB = CLP.get_obj_value(tmpModel)
+		node.objLoB = node.objUpB - CLP.dual_tolerance(tmpModel) #TODO actually compute the dual bound
 		@warn "Inaccuracy in node sol, status code: "*string(CLPstatus)
-
+		node.reliable = false
    	elseif CLPstatus == 4
        status = 3 # "error"
         @error "Subsover error, status code: "*string(CLPstatus)
@@ -212,7 +212,7 @@ end
 # primal = CLP.primal_column_solution(model)
 # bndDual = CLP.dual_column_solution(model)
 # cnsDual = CLP.dual_row_solution(model)
-# objVal = CLP.get_obj_value(model)
+# objUpB = CLP.get_obj_value(model)
 # dualObjVal = CLP.get_
 #
 # CLP.get_col_solution(model)

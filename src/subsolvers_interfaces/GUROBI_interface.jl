@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-28T13:26:03+01:00
+# @Last modified time: 2020-02-28T18:03:37+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -199,30 +199,28 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
         node.primal = Gurobi.get_solution(model)
         node.bndDual = zeros(numVars)
         node.cnsDual = zeros(numCnss)
-        node.objGap = 0
-        node.objVal = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
-    elseif status in [3,4]
+        node.objUpB = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
+		node.objLoB = node.objUpB - workspace.settings.OptimalityTol
+		node.reliable = true
+	elseif status in [3,4]
         status = 1 # "infeasible"
         node.primal = NaNs(numVars)
         node.bndDual = NaNs(numVars)
         node.cnsDual = NaNs(numCnss)
-        node.objGap = 0
-        node.objVal = Inf
+        node.objLoB = node.objUpB = Inf
+		node.reliable = true
     elseif status in [7,8,10,11,13]
         status = 2 # "unreliable"
         node.primal = Gurobi.get_solution(model)
         node.primal = @. min(max(node.primal,node.varLoBs),node.varUpBs)
         node.bndDual = zeros(numVars)
         node.cnsDual = zeros(numCnss)
-        newObjVal = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
-		@warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
-		if newObjVal >= node.objVal - node.objGap
-            node.objGap = newObjVal - node.objVal + node.objGap
-            node.objVal = newObjVal
-        else
-            node.objGap = Inf # gurobi doesn't give enough information to estimate the gap
-            node.objVal = newObjVal
+        node.objUpB = (transpose(node.primal)*objFun.Q*node.primal)/2. + transpose(objFun.L)*node.primal
+		if node.objUpB < node.objLoB
+			node.objLoB = -Inf # gurobi does not give enough info
+			node.reliable = false
         end
+		@warn "Inaccuracy in node sol, status: "*string(Gurobi.get_status(model))*" (code: "*string(status)*")"
     elseif status in [1,5,12]
         status = 3 # "error"
         @error "Subsover error, status: "*string(Gurobi.get_status(model))*" (code: "*string(status)*")"

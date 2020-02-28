@@ -22,7 +22,7 @@ function initialize_to_constant!(pseudoCosts::Tuple{Array{Float64,2},Array{Int,2
 end
 
 function initialize_with_root_objective!(pseudoCosts::Tuple{Array{Float64,2},Array{Int,2}},refNode::BBnode,proportionalityConstant::Float64)::Nothing
-    @. pseudoCosts[1] = max(proportionalityConstant*abs(refNode.objVal),1e-4)
+    @. pseudoCosts[1] = max(proportionalityConstant*abs(refNode.objUpB),1e-4)
     @. pseudoCosts[2] = 0
     return
 end

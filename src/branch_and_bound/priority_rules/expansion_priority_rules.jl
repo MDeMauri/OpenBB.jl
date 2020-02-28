@@ -18,7 +18,7 @@ end
 
 # priority functions for nodes
 function lower_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.objVal <= rightNode.objVal
+    if leftNode.objUpB <= rightNode.objUpB
         return true
     else
         return false
@@ -26,23 +26,23 @@ function lower_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::B
 end
 
 function higher_objective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.objVal >= rightNode.objVal
+    if leftNode.objUpB >= rightNode.objUpB
         return true
     else
         return false
     end
 end
 
-function lower_avgAbsFractionality(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.avgAbsFrac <= rightNode.avgAbsFrac
+function lower_avgFractionality(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.avgFractionality <= rightNode.avgFractionality
         return true
     else
         return false
     end
 end
 
-function higher_avgAbsFractionality(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.avgAbsFrac >= rightNode.avgAbsFrac
+function higher_avgFractionality(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.avgFractionality >= rightNode.avgFractionality
         return true
     else
         return false
@@ -53,16 +53,16 @@ end
 
 
 # priority functions for nodes
-function lower_pseudoObjective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.pseudoObjective <= rightNode.pseudoObjective
+function lower_pseudoObj(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.pseudoObj <= rightNode.pseudoObj
         return true
     else
         return false
     end
 end
 
-function higher_pseudoObjective(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
-    if leftNode.pseudoObjective >= rightNode.pseudoObjective
+function higher_pseudoObj(leftNode::BBnode,rightNode::BBnode,status::BBstatus)::Bool
+    if leftNode.pseudoObj >= rightNode.pseudoObj
         return true
     else
         return false

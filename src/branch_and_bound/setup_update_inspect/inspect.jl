@@ -53,10 +53,10 @@ function get_best_solution(workspace::BBworkspace{T1,T2,T3};localOnly::Bool=fals
 
     # check the other workers if needed/required
     if !(localOnly || workspace.sharedMemory isa NullSharedMemory) &&
-       (solution isa NullBBnode || solution.objVal > workspace.status.objLoB)
+       (solution isa NullBBnode || solution.objUpB > workspace.status.objLoB)
         for p in 2:workspace.settings.numProcesses
             node = remotecall_fetch(Main.eval,p,:(OpenBB.get_best_solution(workspace,localOnly=true)))
-            if !(node isa NullBBnode) && node.objVal == workspace.sharedMemory.objectiveBounds[end]
+            if !(node isa NullBBnode) && node.objUpB == workspace.sharedMemory.objectiveBounds[end]
                 solution = node
                 break
             end
@@ -104,7 +104,7 @@ function get_best_node(workspace::BBworkspace{T1,T2,T3};localOnly::Bool=false)::
         # choose the best of the returned nodes
         for node in nodes
             if bestNode isa NullBBnode || # there is no best node yet
-               !(node isa NullBBnode) && ((node.avgAbsFrac==0 && bestNode.avgAbsFrac > 0) || # the new node is a solution while the best so far isn't
+               !(node isa NullBBnode) && ((node.avgFractionality==0 && bestNode.avgFractionality > 0) || # the new node is a solution while the best so far isn't
                                           expansion_priority_rule(workspace.settings.expansionPriorityRule,node,bestNode,workspace.status)) # the new node is better than the best so far
 
                 # set the new node as the best one

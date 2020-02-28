@@ -45,7 +45,7 @@ OpenBB.setup("osqp",problem,bbSettings,ssSettings)
 OpenBB.solve_b()
 
 
-@assert 0.5 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objVal"] <= 0.5 + OpenBB.get_settings()["primalTolerance"]
+@assert 0.5 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objUpB"] <= 0.5 + OpenBB.get_settings()["primalTolerance"]
 OpenBB.get_subsolver_settings()
 
 OpenBB.get_all_solutions()
@@ -88,7 +88,7 @@ OpenBB.update_bounds_b(Dict("cnsLoBs"=>[1.0,0.0]),true,false)
 OpenBB.append_problem_b(problem,true,false)
 OpenBB.update_b()
 OpenBB.solve_b()
-@assert 1.0 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objVal"] <= 1.0 + OpenBB.get_settings()["primalTolerance"]
+@assert 1.0 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objUpB"] <= 1.0 + OpenBB.get_settings()["primalTolerance"]
 
 OpenBB.integralize_variables_b([5])
 OpenBB.solve_b()

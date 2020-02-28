@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: BBnode.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-26T21:42:00+01:00
+# @Last modified time: 2020-02-28T16:57:09+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -26,10 +26,10 @@ mutable struct BBnode <: AbstractBBnode
     cuts::LinearConstraintSet{SparseMatrixCSC{Float64,Int}}
     cutDual::Array{Float64,1}
     # scores
-    avgAbsFrac::Float64
-    objVal::Float64
-    objGap::Float64
-    pseudoObjective::Float64
+    avgFractionality::Float64
+    objUpB::Float64
+    objLoB::Float64
+    pseudoObj::Float64
     reliable::Bool
     # update version
     version::Int64
@@ -50,7 +50,7 @@ function BBnode(varLoBs::Array{Float64,1},varUpBs::Array{Float64,1},
                   cnsLoBs,cnsUpBs,
                   primal,bndDual,cnsDual,
                   LinearConstraintSet(spzeros(maxNumberOfCuts,length(varLoBs)),zeros(maxNumberOfCuts),zeros(maxNumberOfCuts)),zeros(maxNumberOfCuts),
-                  NaN,NaN,0.0,NaN,
+                  1.0,Inf,-Inf,-Inf,
                   false,version)
 end
 
@@ -66,7 +66,7 @@ function copy(node::BBnode)::BBnode
                   node.cnsLoBs,node.cnsUpBs,
                   node.primal,node.bndDual,node.cnsDual,
                   node.cuts,node.cutDual,
-                  node.avgAbsFrac,node.objVal,node.pseudoObjective,
+                  node.avgFractionality,node.objUpB,node.pseudoObj,
                   node.reliable,node.version)
 end
 
@@ -77,7 +77,7 @@ function deepcopy(node::BBnode)::BBnode
                   copy(node.cnsLoBs),copy(node.cnsUpBs),
                   copy(node.primal),copy(node.bndDual),copy(node.cnsDual),
                   deepcopy(node.cuts),copy(node.cutDual),
-                  node.avgAbsFrac,node.objVal,node.objGap,node.pseudoObjective,
+                  node.avgFractionality,node.objUpB,node.objLoB,node.pseudoObj,
                   node.reliable,node.version)
 end
 
@@ -152,10 +152,10 @@ function serialize_in!(serial::SerialData,node::BBnode;offset::Int=0)::Int
     offset += 3
 
     # numeric values
-    serial[offset+1] = node.avgAbsFrac
-    serial[offset+2] = node.objVal
-    serial[offset+3] = node.objGap
-    serial[offset+4] = node.pseudoObjective
+    serial[offset+1] = node.avgFractionality
+    serial[offset+2] = node.objUpB
+    serial[offset+3] = node.objLoB
+    serial[offset+4] = node.pseudoObj
     serial[offset+5] = node.reliable
     serial[offset+6] = node.version
     offset += 6
@@ -222,10 +222,10 @@ function BBnode(serial::SerialData;offset::Int=0)::Tuple{AbstractBBnode,Int}
         offset += 3
 
         # numeric values
-        avgAbsFrac          = serial[offset+1]
+        avgFractionality          = serial[offset+1]
         objective           = serial[offset+2]
-        objGap              = serial[offset+3]
-        pseudoObjective     = serial[offset+4]
+        objLoB              = serial[offset+3]
+        pseudoObj     = serial[offset+4]
         reliable            = Bool(serial[offset+5])
         version             = Int(serial[offset+6])
         offset += 6
@@ -261,7 +261,7 @@ function BBnode(serial::SerialData;offset::Int=0)::Tuple{AbstractBBnode,Int}
                       cnsLoBs,cnsUpBs,
                       primal,bndDual,cnsDual,
                       LinearConstraintSet(cutsMatrix,cutsLoBs,cutsUpBs),cutDual,
-                      avgAbsFrac,objective,objGap,pseudoObjective,
+                      avgFractionality,objective,objLoB,pseudoObj,
                       reliable,version)
         return (node,offset)
 
