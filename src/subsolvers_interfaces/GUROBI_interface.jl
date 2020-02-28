@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: Gurobi_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-19T15:54:09+01:00
+# @Last modified time: 2020-02-27T10:37:22+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -124,7 +124,7 @@ function setup(problem::Problem,settings::GUROBIsettings;bb_primalTolerance::Flo
         settings_dict[field] = getfield(settings,field)
     end
 
-    # create the subsolver OSQPworkspace
+    # create the subsolver workspace
     env = Gurobi.Env()
     Gurobi.setparams!(env;settings_dict...)
 
@@ -162,9 +162,9 @@ function solve!(node::BBnode,workspace::GUROBIworkspace)::Tuple{Int8,Float64}
 	    model = Gurobi.gurobi_model(workspace.environment,H = tmpProblem.objFun.Q,
 	                                                      f = tmpProblem.objFun.L,
 	                                                      A = vcat(-tmpProblem.cnsSet.A,tmpProblem.cnsSet.A),
-	                                                      b = vcat(-tmpProblem.node.cnsLoBs,tmpProblem.node.cnsUpBs),
-	                                                      lb = tmpProblem.node.varLoBs,
-	                                                      ub = tmpProblem.node.varUpBs)
+	                                                      b = vcat(-node.cnsLoBs,node.cnsUpBs),
+	                                                      lb = node.varLoBs,
+	                                                      ub = node.varUpBs)
 
 	    Gurobi.update_model!(model)
 	    workspace.outdated = false
