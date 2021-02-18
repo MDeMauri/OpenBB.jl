@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: OSQP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-28T16:38:04+01:00
+# @Last modified time: 2021-01-27T17:20:04+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -11,16 +11,16 @@ using OSQP
 
 ## Settings ##########################################################
 # structure used to hold the settings for OSQP
-mutable struct OSQPsettings <: AbstractSettings
-    rho::Float64                        # ADMM rho step 	0 < rho
-    sigma::Float64                      # ADMM sigma step 	0 < sigma
+mutable struct OSQPsettings <: SubsolverSettings
+    rho::Float                        	# ADMM rho step 	0 < rho
+    sigma::Float                      	# ADMM sigma step 	0 < sigma
     max_iter::Int                       # Maximum number of iterations 	0 < max_iter (integer)
-    eps_abs::Float64                    # Absolute tolerance 	0 <= eps_abs
-    eps_rel::Float64                    # Relative tolerance 	0 <= eps_rel
-    eps_prim_inf::Float64               # Primal infeasibility tolerance 	0 <= eps_prim_inf
-    eps_dual_inf::Float64               # Dual infeasibility tolerance 	0 <= eps_dual_inf
-    alpha::Float64                      # ADMM overrelaxation parameter 	0 < alpha < 2
-    delta::Float64                      # Polishing regularization parameter 	0 < delta
+    eps_abs::Float                    	# Absolute tolerance 	0 <= eps_abs
+    eps_rel::Float                    	# Relative tolerance 	0 <= eps_rel
+    eps_prim_inf::Float               	# Primal infeasibility tolerance 	0 <= eps_prim_inf
+    eps_dual_inf::Float               	# Dual infeasibility tolerance 	0 <= eps_dual_inf
+    alpha::Float                      	# ADMM overrelaxation parameter 	0 < alpha < 2
+    delta::Float                      	# Polishing regularization parameter 	0 < delta
     polish::Bool                        # Perform polishing 	True/False
     polish_refine_iter::Int             # Refinement iterations in polish 	0 < polish_refine_iter
     verbose::Bool                       # Print output 	True/False
@@ -30,22 +30,22 @@ mutable struct OSQPsettings <: AbstractSettings
     scaling::Int                        # Number of scaling iterations 	0 (disabled) or 0 < scaling (integer)
     adaptive_rho::Bool                  # Adaptive rho 	True/False
     adaptive_rho_interval::Int          # Adaptive rho interval 	0 (automatic) or 0 < adaptive_rho_interval
-    adaptive_rho_tolerance::Float64     # Tolerance for adapting rho 	1 <= adaptive_rho_tolerance
-    adaptive_rho_fraction::Float64      # Adaptive rho interval as fraction of setup time (auto mode) 	0 < adaptive_rho_fraction
-    timeLimit::Float64	                # Run time limit in seconds 	0 (disabled) or 0 <= timeLimit
+    adaptive_rho_tolerance::Float     	# Tolerance for adapting rho 	1 <= adaptive_rho_tolerance
+    adaptive_rho_fraction::Float      	# Adaptive rho interval as fraction of setup time (auto mode) 	0 < adaptive_rho_fraction
+    timeLimit::Float	                # Run time limit in seconds 	0 (disabled) or 0 <= timeLimit
 
 end
 
 
-function OSQPsettings(; rho::Float64=1e-1,
-                        sigma::Float64=1e-6,
+function OSQPsettings(; rho::Float=1e-1,
+                        sigma::Float=1e-6,
                         max_iter::Int=10000,
-                        eps_abs::Float64=1e-6,
-                        eps_rel::Float64=1e-6,
-                        eps_prim_inf::Float64=1e-4,
-                        eps_dual_inf::Float64=1e-4,
-                        alpha::Float64=1.6,
-                        delta::Float64=1e-06,
+                        eps_abs::Float=1e-6,
+                        eps_rel::Float=1e-6,
+                        eps_prim_inf::Float=1e-4,
+                        eps_dual_inf::Float=1e-6,
+                        alpha::Float=1.6,
+                        delta::Float=1e-06,
                         polish::Bool=true,
                         polish_refine_iter::Int=15,
                         verbose::Bool=false,
@@ -55,9 +55,9 @@ function OSQPsettings(; rho::Float64=1e-1,
                         scaling::Int=15,
                         adaptive_rho::Bool=true,
                         adaptive_rho_interval::Int=0,
-                        adaptive_rho_tolerance::Float64=5.,
-                        adaptive_rho_fraction::Float64=0.4,
-                        timeLimit::Float64=0.)::OSQPsettings
+                        adaptive_rho_tolerance::Float=5.,
+                        adaptive_rho_fraction::Float=0.4,
+                        timeLimit::Float=0.)::OSQPsettings
 
 
 
@@ -69,10 +69,69 @@ end
 
 
 
+## Utility Functions ##########################################################
+
+# wrapper to get verbosity of each solver in the same way
+function get_verbosity(settings::OSQPsettings)::Bool
+	return settings.verbose
+end
+
+# wrapper to get primal tolerance of each solver in the same way
+function get_primalTolerance(settings::OSQPsettings)::Float
+	return settings.eps_prim_inf
+end
+
+# wrapper to get dual tolerance of each solver in the same way
+function get_dualTolerance(settings::OSQPsettings)::Float
+	return settings.eps_dual_inf
+end
+
+# wrapper to get iterations limit of each solver in the same way
+function get_iterationsLimit(settings::OSQPsettings)::Int
+	return settings.max_iter
+end
+
+# wrapper to get time limit of each solver in the same way
+function get_timeLimit(settings::OSQPsettings)::Float
+	return settings.timeLimit
+end
+
+# wrapper to set verbosity of each solver in a consistent way
+function set_verbosity!(settings::OSQPsettings,verbose::Bool)::Nothing
+	settings.verbose = verbose
+	return
+end
+
+# wrapper to set primal tolerance of each solve in a consistent way
+function set_primalTolerance!(settings::OSQPsettings,tolerance::Float)::Nothing
+	settings.eps_prim_inf= tolerance
+	return
+end
+
+# wrapper to set dual tolerance of each solve in a consistent way
+function set_dualTolerance!(settings::OSQPsettings,tolerance::Float)::Nothing
+	settings.eps_dual_inf = tolerance
+	return
+end
+
+# wrapper to set the iteration limit of each solver in a consistent way
+function set_iterationsLimit!(settings::OSQPsettings,limit::Int)::Nothing
+	# set the appropriate setting to the value
+	settings.max_iter=limit
+	return
+end
+
+# wrapper to set the time limit of each solver in a consistent way
+function set_timeLimit!(settings::OSQPsettings,limit::Float)::Nothing
+	# set the appropriate setting to the value
+	settings.timeLimit=limit
+	return
+end
+
 
 ## Workspace ##########################################################
 # structure used for storing data for OSQP solver
-mutable struct OSQPworkspace <: AbstractWorkspace
+mutable struct OSQPworkspace <: SubsolverWorkspace
     # problem
     problem::Problem
     # memory
@@ -85,21 +144,11 @@ end
 
 ## Setup & Update ##########################################################
 # this function creates an OSQP.Model representing the given CvxQproblem
-function setup(problem::Problem,settings::OSQPsettings;bb_primalTolerance::Float64=Inf,bb_timeLimit=Inf)::OSQPworkspace
+function setup(problem::Problem,settings::OSQPsettings;withPrecompilation::Bool=false,nodeType::Type=AbstractNode)::OSQPworkspace
 
     # check the problem
     @assert problem.objFun isa NullObjective || problem.objFun isa LinearObjective || problem.objFun isa QuadraticObjective
     @assert problem.cnsSet isa NullConstraintSet || problem.cnsSet isa LinearConstraintSet
-
-    # overwrite the osqp settings depending on the branch and bound settings
-    settings.eps_prim_inf = min(settings.eps_prim_inf,bb_primalTolerance*1e-1)
-    if bb_timeLimit < Inf
-        if settings.timeLimit == 0.
-            settings.timeLimit = bb_timeLimit
-        else
-            settings.timeLimit = min(settings.timeLimit,bb_timeLimit)
-        end
-    end
 
     # reformat the settings
     settings_dict = Dict{Symbol,Any}()
@@ -108,8 +157,8 @@ function setup(problem::Problem,settings::OSQPsettings;bb_primalTolerance::Float
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(problem.objFun)
-    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(problem.cnsSet)
+    objFun = QuadraticObjective{SpMatrix{Float},Vector{Float}}(problem.objFun)
+    cnsSet = LinearConstraintSet{SpMatrix{Float}}(problem.cnsSet)
 
     # create the OSQPworkspaces
     model = OSQP.Model()
@@ -119,8 +168,18 @@ function setup(problem::Problem,settings::OSQPsettings;bb_primalTolerance::Float
                       u=vcat(problem.varSet.upBs,cnsSet.upBs),
                       settings_dict...)
 
+	#create the workspace
+    workspace = OSQPworkspace(problem,model,settings,false)
 
-    return OSQPworkspace(problem,model,settings,false)
+	# precompile the main functions to be used according to the workspace created
+	if withPrecompilation
+		precompile(make_outdated!,(typeof(workspace),))
+		precompile(update!,(typeof(workspace),))
+		precompile(solve!,(nodeType,typeof(workspace)))
+	end
+
+
+	return workspace
 end
 
 # it marks the workspace as outdated
@@ -139,8 +198,8 @@ function update!(workspace::OSQPworkspace)::Nothing
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
-    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(workspace.problem.cnsSet)
+    objFun = QuadraticObjective{SpMatrix{Float},Vector{Float}}(workspace.problem.objFun)
+    cnsSet = LinearConstraintSet{SpMatrix{Float}}(workspace.problem.cnsSet)
 
     # re-setup OSQP for the new problem
     OSQP.setup!(workspace.model;P=sparse(objFun.Q),q=objFun.L,
@@ -155,19 +214,19 @@ function update!(workspace::OSQPworkspace)::Nothing
 end
 
 ## Solve ##########################################################
-function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
+function solve!(node::AbstractNode,workspace::OSQPworkspace;objUpperLimit::Float=Inf)::Tuple{Int8,Float}
 
 	# collect info on the problem
 	numVars = get_size(workspace.problem.varSet)
 	numCnss = get_size(workspace.problem.cnsSet)
-	withCuts = nnz(sparse(node.cuts.A)) > 0
+	withCuts = nnz(sparse(node.cutSet.A)) > 0
 
     # check if local cuts are present
     if withCuts # there are some local cuts
 
         # construct a temporary problem definition (to accomodate the cuts)
         tmpProblem = deepcopy(workspace.problem)
-        append!(tmpProblem.cnsSet,node.cuts)
+        append!(tmpProblem.cnsSet,node.cutSet)
 		update_bounds!(tmpProblem.varSet,loBs=node.varLoBs,upBs=node.varUpBs)
 		update_bounds!(tmpProblem.cnsSet,collect(1:length(node.cnsLoBs)),loBs=node.cnsLoBs,upBs=node.cnsUpBs)
 
@@ -205,20 +264,20 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        node.objUpB = sol.info.obj_val
-        node.objLoB = node.objUpB - max(workspace.settings.eps_abs,workspace.settings.eps_rel*abs(node.objUpB))
-		node.reliable = true
+		oldObjLoB = node.objLoB
+		update_objBounds!(node,workspace.problem,workspace.settings.eps_prim_inf,workspace.settings.eps_dual_inf)
+		node.objLoB = max(node.objLoB,oldObjLoB) # avoid problems with lack of accuracy of the dual
 	elseif sol.info.status_val == -3
         status = 1 # "infeasible"
+		# update the primal info
         @. node.primal = @. min(max(sol.x,node.varLoBs),node.varUpBs)
-        @. node.bndDual = sol.y[1:numVars]
-        @. node.cnsDual = sol.y[numVars+1:numVars+numCnss]
+		# do not update the dual info because
+		# the old ones are still good
+		# and we cannot trust the new ones
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        node.objUpB = Inf
-        node.objLoB = Inf
-		node.reliable = true
+        node.objLoB = node.objUpB = Inf
     elseif sol.info.status_val in [2,4,3,-6,-2]
         status = 2 # "unreliable
         @. node.primal = min(max(sol.x,node.varLoBs-workspace.settings.eps_prim_inf),node.varUpBs+workspace.settings.eps_prim_inf)
@@ -227,12 +286,10 @@ function solve!(node::BBnode,workspace::OSQPworkspace)::Tuple{Int8,Float64}
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
-        node.objUpB = 1/2 * transpose(node.primal) * objFun.Q *node.primal + transpose(objFun.L) * node.primal
-        if node.objUpB < node.objLoB
-            node.objLoB = -Inf #TODO: recopute the gap if possible
-			node.reliable = false
-        end
+		oldObjLoB = node.objLoB
+		update_objBounds!(node,workspace.problem,workspace.settings.eps_prim_inf,workspace.settings.eps_dual_inf)
+		node.objLoB = max(node.objLoB,oldObjLoB) # it is possible that the parent node solution was more successful
+
         @warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"

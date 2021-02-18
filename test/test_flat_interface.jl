@@ -3,98 +3,144 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_flat_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T17:37:00+02:00
+# @Last modified time: 2021-02-12T17:08:15+01:00
 # @License: LGPL-3.0
 
-using OpenBB
 using LinearAlgebra
 using SparseArrays
 using OpenBB
 
-
-problem = Dict("objFun"=>Dict(),"cnsSet"=>Dict(),"varSet"=>Dict())
-
-problem["objFun"]["Q"] = 2. *OpenBB.speye(5)
-problem["objFun"]["Q"][3,3] = 0
-dropzeros!(problem["objFun"]["Q"])
-problem["objFun"]["L"] = zeros(5)
-
-problem["cnsSet"]["A"] = vcat([1. 1. 0. -1. -1.],[0. 1. 1. 1. 0.])
-problem["cnsSet"]["loBs"] = [0.,1.]
-problem["cnsSet"]["upBs"] = [0.,1.]
-
-problem["varSet"]["loBs"] = [.5,0,0,0,-10]
-problem["varSet"]["upBs"] = [.5,1,1,1,10]
-problem["varSet"]["vals"] = [.5,0,1,0,.5]
-problem["varSet"]["dscIndices"] = [2,3,4]
-problem["varSet"]["sos1Groups"] = [1,1,1]
-
-bbSettings = Dict("verbose"=>false,"numProcesses"=>1,"interactiveMode"=>true)
-ssSettings = Dict()
+OpenBB.include_flat_interface()
 
 
-if OpenBB.withOSQP()
-    subsolver = "osqp"
-elseif OpenBB.withQPALM()
-    subsolver = "qpalm"
-elseif OpenBB.withGUROBI()
-    subsolver = "gurobi"
-end
-
-OpenBB.setup("osqp",problem,bbSettings,ssSettings)
-OpenBB.solve_b()
+# define QP problem
+problemDict = Dict{String,Dict{String,Any}}("objFun"=>Dict(),"cnsSet"=>Dict(),"varSet"=>Dict())
+problemDict["objFun"] = Dict{String,Any}("type"=>"Quadratic","Q"=>2.0*speye(5),"L"=>zeros(5))
+problemDict["objFun"]["Q"][3,3] = 0
+dropzeros!(problemDict["objFun"]["Q"])
+problemDict["cnsSet"] = Dict{String,Any}("type"=>"Linear","A"=>vcat([1. 1. 0. -1. -1.],[0. 1. 1. 1. 0.]),"loBs"=>[0.,1.],"upBs"=>[0.,1.])
+problemDict["varSet"] = Dict{String,Any}("vals"=> [.5,0,1,0,.5],"loBs"=>[.5,0,0,0,-10],"upBs"=>[.5,1,1,1,10],"dscIndices"=>[2,3,4],"sos1Groups"=>[1,1,1])
+bbSettings = Dict{String,Any}("subsolverSettings"=>Dict{String,Any}("subsolverName"=>"OSQP"),"verbose"=>false,"numProcesses"=>1,"conservativismLevel"=>1,"withBoundsPropagation"=>true)
 
 
-@assert 0.5 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objUpB"] <= 0.5 + OpenBB.get_settings()["primalTolerance"]
-OpenBB.get_subsolver_settings()
+## BB
 
-OpenBB.get_all_solutions()
-OpenBB.get_best_node()
+# solve MIQP
+workspace = OpenBB.setup("BB",problemDict,bbSettings)
+OpenBB.solveB(workspace)
 
-@assert OpenBB.get_numVariables() == 5
-@assert OpenBB.get_numConstraints() == 2
-@assert OpenBB.get_numDiscreteVariables() == 3
+solution = OpenBB.get_best_feasible_node_dict(workspace)
+@assert 0.5 - workspace.settings.primalTolerance <= OpenBB.get_best_feasible_node_dict(workspace)["objUpB"] <= 0.5 + workspace.settings.primalTolerance
+OpenBB.get_all_feasible_nodes_dict(workspace)
+OpenBB.get_best_node_dict(workspace)
 
-OpenBB.get_constraints_sparsity()
-@assert OpenBB.get_constraint_sparsity(1) == [1,2,4,5]
-@assert OpenBB.get_constraint_sparsity(2) == [2,3,4]
-@assert OpenBB.get_objective_sparsity() == (([1, 2, 4, 5], [1, 2, 4, 5]),Int64[])
+@assert OpenBB.get_numVariables(workspace) == 5
+@assert OpenBB.get_numConstraints(workspace) == 2
+@assert OpenBB.get_numDiscrete(workspace) == 3
 
-@assert OpenBB.get_variableBounds() == ([0.5, 0.0, 0.0, 0.0, -10.0], [0.5, 1.0, 1.0, 1.0, 10.0])
-@assert OpenBB.get_constraintBounds() == ([0.0, 1.0], [0.0, 1.0])
-@assert OpenBB.get_status()["description"] == "optimalSolutionFound"
+@assert OpenBB.get_constraints_dependency(workspace) == [[1,2,4,5],[2,3,4]]
+@assert OpenBB.get_constraint_dependency(workspace,1) == [1,2,4,5]
+@assert OpenBB.get_constraint_dependency(workspace,2) == [2,3,4]
+@assert OpenBB.get_objective_dependency(workspace) == [1, 2, 4, 5]
 
-OpenBB.reset_b()
-@assert OpenBB.get_numUnactiveNodes() == OpenBB.get_numSolutions() == 0
-@assert OpenBB.get_status()["objUpB"] == Inf
+@assert OpenBB.get_variableBounds(workspace) == ([0.5, 0.0, 0.0, 0.0, -10.0], [0.5, 1.0, 1.0, 1.0, 10.0])
+@assert OpenBB.get_constraintBounds(workspace) == ([0.0, 1.0], [0.0, 1.0])
+@assert OpenBB.get_status_dict(workspace)["description"] == "optimalSolutionFound"
 
-OpenBB.clear_b()
-@assert OpenBB.get_numActiveNodes() == 0
+OpenBB.resetB(workspace)
+@assert OpenBB.get_numActiveNodes(workspace) == 1
+@assert OpenBB.get_status_dict(workspace)["objUpB"] == Inf
 
-OpenBB.reset_b()
-@assert OpenBB.get_numActiveNodes() == 1
+OpenBB.clearB(workspace)
+@assert OpenBB.get_numActiveNodes(workspace) == 0
 
-OpenBB.solve_b()
-OpenBB.append_constraints_b(problem["cnsSet"],true,false)
-OpenBB.remove_constraints_b([3,4],true,false)
-OpenBB.permute_constraints_b([2,1],true,false)
-@assert OpenBB.get_constraintBounds() == ([1.0, 0.0], [1.0, 0.0])
-OpenBB.update_bounds_b(Dict("cnsLoBs"=>[0.0,0.0],"varLoBs"=>[0.5, 0.0, 0.0, 0.0, -100.0]),true,false)
-@assert OpenBB.get_constraintBounds() == ([0.0, 0.0], [1.0, 0.0])
-@assert OpenBB.get_variableBounds() == ([0.5, 0.0, 0.0, 0.0, -100.0], [0.5, 1.0, 1.0, 1.0, 10.0])
-OpenBB.update_bounds_b(Dict("cnsLoBs"=>[1.0,0.0]),true,false)
+OpenBB.resetB(workspace)
+@assert OpenBB.get_numFeasibleNodes(workspace) == 0
+@assert OpenBB.get_numActiveNodes(workspace) == 1
+
+OpenBB.solveB(workspace)
+OpenBB.append_constraintsB(workspace,problemDict["cnsSet"],true)
+OpenBB.remove_constraintsB(workspace,[3,4],true)
+OpenBB.permute_constraintsB(workspace,[2,1],true)
+@assert OpenBB.get_constraintBounds(workspace) == ([1.0, 0.0], [1.0, 0.0])
+OpenBB.update_boundsB(workspace,Dict("cnsLoBs"=>[0.0,0.0],"varLoBs"=>[0.5, 0.0, 0.0, 0.0, -100.0]),true)
+@assert OpenBB.get_constraintBounds(workspace) == ([0.0, 0.0], [1.0, 0.0])
+@assert OpenBB.get_variableBounds(workspace) == ([0.5, 0.0, 0.0, 0.0, -100.0], [0.5, 1.0, 1.0, 1.0, 10.0])
+OpenBB.update_boundsB(workspace,Dict("cnsLoBs"=>[1.0,0.0]),true)
 
 
-OpenBB.append_problem_b(problem,true,false)
-OpenBB.update_b()
-OpenBB.solve_b()
-@assert 1.0 - OpenBB.get_settings()["primalTolerance"] <= OpenBB.get_best_solution()["objUpB"] <= 1.0 + OpenBB.get_settings()["primalTolerance"]
+OpenBB.append_problemB(workspace,problemDict,true)
+OpenBB.updateB(workspace)
+OpenBB.solveB(workspace)
+@assert 1.0 - workspace.settings.primalTolerance <= OpenBB.get_best_feasible_node_dict(workspace)["objUpB"] <= 1.0 + workspace.settings.primalTolerance
 
-OpenBB.integralize_variables_b([5])
-OpenBB.solve_b()
-@assert OpenBB.get_status()["description"] == "infeasible"
 
-OpenBB.get_constraints()
-OpenBB.get_objective()
+OpenBB.integralize_variablesB(workspace,[5])
+OpenBB.solveB(workspace)
+@assert OpenBB.get_status_dict(workspace)["description"] == "infeasible"
 
-println(" - flat interface, ok")
+
+
+## HBB
+
+# define NLP problem
+problemDict = Dict{String,Dict{String,Any}}("objFun"=>Dict(),"cnsSet"=>Dict(),"varSet"=>Dict())
+problemDict["objFun"] = Dict{String,Any}("type"=>"Quadratic","Q"=>2.0*speye(5),"L"=>zeros(5))
+problemDict["objFun"]["Q"][3,3] = 0
+dropzeros!(problemDict["objFun"]["Q"])
+A = vcat([1. 1. 0. -1. -1.],[0. 1. 1. 1. 0.])
+problemDict["cnsSet"] = Dict{String,Any}("type"=>"Convex",
+                                         "evalVal"=>x->A*x,"evalJcb"=>x->A,"evalHes"=>x->[zeros(5,5),zeros(5,5)],
+                                         "loBs"=>[0.,1.],"upBs"=>[0.,1.],"typeJcb"=>Matrix{Float64},"typeHes"=>Matrix{Float64},
+                                         "jcbSparsity"=>OpenBB.sparsityMatrix(A),"hesSparsity"=>[spzeros(Bool,5,5),spzeros(Bool,5,5)])
+problemDict["varSet"] = Dict{String,Any}("vals"=> [.5,0,1,0,.5],"loBs"=>[.5,0,0,0,-10],"upBs"=>[.5,1,1,1,10],"dscIndices"=>[2,3,4],"sos1Groups"=>[1,1,1])
+
+hbbSettingsDict = Dict{String,Any}("verbose"=>false,"numProcesses"=>1,"conservativismLevel"=>1,
+                                   "mipSettings"=>Dict{String,Any}("subsolverSettings"=>Dict{String,Any}("subsolverName"=>"OSQP")),
+                                   "nlpSettings"=>Dict{String,Any}("subsolverName"=>"IPOPT"),
+                                   "mipStepSettings"=>Dict{String,Any}("symbol"=>"OAmipStep","args"=>Tuple{}()),
+                                   "nlpStepSettings"=>Dict{String,Any}("symbol"=>"OAnlpStep","args"=>Tuple{}()))
+
+ssSettings = Dict{String,Any}()
+
+# solve MIQP
+workspace = OpenBB.setup("HBB",problemDict,hbbSettingsDict)
+
+OpenBB.solveB(workspace)
+
+solution = OpenBB.get_best_feasible_node_dict(workspace)
+@assert 0.5 - workspace.settings.primalTolerance <= OpenBB.get_best_feasible_node_dict(workspace)["objUpB"] <= 0.5 + workspace.settings.primalTolerance
+
+
+OpenBB.get_all_feasible_nodes_dict(workspace)
+
+
+@assert OpenBB.get_numVariables(workspace) == 5
+@assert OpenBB.get_numConstraints(workspace) == 2
+@assert OpenBB.get_numDiscrete(workspace) == 3
+
+@assert OpenBB.get_constraints_dependency(workspace) == [[1,2,4,5],[2,3,4]]
+@assert OpenBB.get_constraint_dependency(workspace,1) == [1,2,4,5]
+@assert OpenBB.get_constraint_dependency(workspace,2) == [2,3,4]
+@assert OpenBB.get_objective_dependency(workspace) == [1, 2, 4, 5]
+
+@assert OpenBB.get_variableBounds(workspace) == ([0.5, 0.0, 0.0, 0.0, -10.0], [0.5, 1.0, 1.0, 1.0, 10.0])
+@assert OpenBB.get_constraintBounds(workspace) == ([0.0, 1.0], [0.0, 1.0])
+@assert OpenBB.get_status_dict(workspace)["description"] == "optimalSolutionFound"
+
+
+OpenBB.resetB(workspace)
+@assert OpenBB.get_numFeasibleNodes(workspace) == 0
+@assert OpenBB.get_status_dict(workspace)["objUpB"] == Inf
+
+OpenBB.solveB(workspace)
+OpenBB.append_constraintsB(workspace,problemDict["cnsSet"],true)
+OpenBB.remove_constraintsB(workspace,[3,4],true)
+OpenBB.permute_constraintsB(workspace,[2,1],true)
+
+@assert OpenBB.get_constraintBounds(workspace) == ([1.0, 0.0], [1.0, 0.0])
+OpenBB.update_boundsB(workspace,Dict("cnsLoBs"=>[0.0,0.0],"varLoBs"=>[0.5, 0.0, 0.0, 0.0, -100.0]),true)
+
+@assert OpenBB.get_constraintBounds(workspace) == ([0.0, 0.0], [1.0, 0.0])
+@assert OpenBB.get_variableBounds(workspace) == ([0.5, 0.0, 0.0, 0.0, -100.0], [0.5, 1.0, 1.0, 1.0, 10.0])
+OpenBB.update_boundsB(workspace,Dict("cnsLoBs"=>[1.0,0.0]),true)

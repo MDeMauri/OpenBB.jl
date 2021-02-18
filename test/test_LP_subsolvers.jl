@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_LP_subsolvers.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-01-08T16:57:52+01:00
+# @Last modified time: 2021-02-12T14:38:34+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -13,18 +13,18 @@ using SparseArrays
 
 function test_LP_subsolver(subsolver)
 
-    if subsolver == "CLP"
-        subsolverSettings = OpenBB.CLPsettings()
-    else
-        error("Subsolver Unknown "*subsolver)
-    end
+    # build default settings for the solver
+    subsolverSettings = OpenBB.eval(Symbol(subsolver,"settings"))()
 
-    print(" - ")
     # create first problem
     problem = OpenBB.Problem(objFun=OpenBB.LinearObjective(L=[-.5,0.,0.,0.]),
-                             cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[0.0],upBs=Float64[0.0]),
+                             cnsSet=OpenBB.LinearConstraintSet(A=ones(1,4),loBs=[0.0],upBs=[0.0]),
                              varSet=OpenBB.VariableSet(loBs=[-5.;-Infs(3)],upBs=[ 5.;Infs(3)],vals=zeros(4),dscIndices=[1]))
-    workspace = OpenBB.setup(problem,OpenBB.BBsettings(interactiveMode=true,verbose=false,statusInfoPeriod=0.01,numProcesses=1),subsolverSettings)
+    workspace = OpenBB.setup(problem,OpenBB.BBsettings(subsolverSettings=subsolverSettings,
+                                                       conservativismLevel=1,
+                                                       verbose=false,
+                                                       statusInfoPeriod=0.01,
+                                                       numProcesses=1))
     result0 = OpenBB.solve!(workspace)
 
     # add some linear contraints
@@ -42,11 +42,11 @@ function test_LP_subsolver(subsolver)
 
     OpenBB.update_bounds!(workspace;varLoBs=[1.,0.,0.,0.,1.,0.,0.,0.])
     result3 = OpenBB.solve!(workspace)
-    println(subsolver,": setup + solve + update, ok")
 end
 
 for subsolver_info in OpenBB.get_available_subsolvers()
-    if subsolver_info[2] == "LP"
+    if "LP" in subsolver_info && !("QP" in subsolver_info) && !("NLP" in subsolver_info)
+        OpenBB.load_subsolver_interface(subsolver_info[1])
         test_LP_subsolver(subsolver_info[1])
     end
 end

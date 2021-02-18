@@ -1,0 +1,27 @@
+@Author: Massimo De Mauri <massimo>
+@Date:   2020-12-27T16:52:16+01:00
+@Email:  massimo.demauri@protonmail.com
+@Filename: todo_list.txt
+@Last modified by:   massimo
+@Last modified time: 2021-02-12T14:58:59+01:00
+@License: LGPL-3.0
+
+## short term
+strategy to enlarge max number cuts
+implement time limit in HBB
+implement cutoff in HBB
+write more informative tests + add tests for linear problems
+add tests for MPC addon
+empty updates-register
+implement "normal" HBB shift
+worhp interface
+
+
+## long term
+implement early infeasibility detection in update functions
+maybe go back to lazy branching (solve then branch)
+implement arrays for concatenation without copying
+Check bound propagation
+improve cvx functions handling (avoid accumulation of function calls in MPC)
+implement probing and strong branching
+implement single-tree proximal outer approximation

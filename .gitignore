@@ -1,5 +1,5 @@
 __pycache__
-non_public_*
+nonpublic_*
 
 # Cache files
 *.swp

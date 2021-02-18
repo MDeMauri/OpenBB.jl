@@ -4,10 +4,11 @@
 # @Project: OpenBB
 # @Filename: OpenBB.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-26T21:34:30+01:00
+# @Last modified time: 2021-02-12T18:14:25+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
+__precompile__()
 
 module OpenBB
 
@@ -17,38 +18,74 @@ module OpenBB
     using Distributed
     using SparseArrays
     using LinearAlgebra
+    using Statistics: median, mean
     using SharedArrays
-    using Pkg: installed
+    using Pkg: dependencies
+    using Base: RefValue
 
-    # use or not the MPC addon (the folder containing the mpc toolbox should be placed beside the one containing OpenBB)
-    function withMPCaddon()
-        return true
+    # find src folder
+    const homeDirectory = Base.source_dir()[1:end-4]
+    const tempDirectory = homeDirectory*"/non_public_temp_bin/"
+
+    # container for error logging
+    errorLogs = Vector{String}()
+    function get_errorLogs()::Nothing
+        @everywhere try @. println(OpenBB.errorLogs) catch err end
+        return
     end
 
-    # types definitions
-    include("./types/types.jl")
+    # type aliases
+    const Float = Float64
+    const SpMatrix{T} = SparseMatrixCSC{T,Int}
+    const SpVector{T} = SparseVector{T,Int}
+    const VirtualVector{T} = Union{Array{T,1},SubArray{T,1}}
+    const VirtualMatrix{T} = Union{Array{T,2},SubArray{T,2}}
+    const AbMatrix{T} = Union{Matrix{T},SpMatrix{T}}
+    const AbVector{T} = Union{Vector{T},SpVector{T}}
 
-    # main solver
-    include("./branch_and_bound/BB.jl")
 
-    # code for preprocessing
-    include("./preprocessing/preprocessing.jl")
+    # define infinity for ints
+    const InfI64 = 2^63-1
+    const InfI32 = 2^31-1
+
+    # base abstract types
+    abstract type AbstractSettings end; struct NullSettings <: AbstractSettings end
+    abstract type AbstractWorkspace end; struct NullWorkspace <: AbstractWorkspace end
+    abstract type AbstractNode end; struct NullNode <: AbstractNode end
 
     # some utilities
-    include("./utilities/utilities.jl")
+    include(homeDirectory*"/src/utilities/_include.jl")
+
+    # custom types
+    include(homeDirectory*"/src/problem_definition/_include.jl")
 
     # include the subsolvers
-    include("./subsolvers_interfaces/subsolvers_interfaces.jl")
+    include(homeDirectory*"/src/subsolvers_interfaces/_include.jl")
 
-    # include heuristics
-    include("./heuristics/heuristics.jl")
+    # Branch&Bound and Hybrid-Branch&Bound routines
+    include(homeDirectory*"/src/algorithms/_include.jl")
 
-    # include the flat interface
-    include("./alternative_interfaces/flat_interface/flat_interface.jl")
+    # include addons
+    include(homeDirectory*"/addons/_include.jl")
 
-    # load the mpc addon
-    if withMPCaddon()
-      include(Base.source_path()*"../../../../MPCforOpenBB/src/mpc_addon.jl")
+    # include default subsolvers:
+    load_subsolver_interface("CLP")
+    load_subsolver_interface("OSQP")
+    load_subsolver_interface("IPOPT")
+
+    # optional inclusions
+    function include_flat_interface()::Nothing
+        include(homeDirectory*"/alternative_interfaces/flat_interface.jl")
+        if WITH_MPC_ADDON
+            include(homeDirectory*"/addons/MPCaddon/alternative_interfaces/flat_interface.jl")
+        end
+        return
+    end
+
+    # test function
+    function runtests()::Nothing
+        Main.include(homeDirectory*"/test/runtests.jl")
+        return
     end
 
 end # module

@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: test_problem_definitions_fundamentals.jl
 # @Last modified by:   massimo
-# @Last modified time: 2019-09-25T16:56:05+02:00
+# @Last modified time: 2020-10-30T22:51:47+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -11,14 +11,14 @@ using OpenBB
 using LinearAlgebra
 using SparseArrays
 
-obj = Array{OpenBB.AbstractObjective,1}(undef,2)
+obj = Array{OpenBB.ObjectiveFunction,1}(undef,2)
 obj[1] = OpenBB.QuadraticObjective(Q=Matrix(1.0I,4,4,),L=ones(4))
 obj[2] = OpenBB.LinearObjective(L=ones(4))
 
-cns = Array{OpenBB.AbstractConstraintSet,1}(undef,1)
+cns = Array{OpenBB.ConstraintSet,1}(undef,1)
 cns[1] = OpenBB.LinearConstraintSet(A=sparse(hcat(ones(1,2),zeros(1,2))),loBs=[1.],upBs=[1.])
 
-var = Array{OpenBB.AbstractVariableSet,1}(undef,1)
+var = Array{OpenBB.VariableSet,1}(undef,1)
 var[1] = OpenBB.VariableSet(loBs=zeros(4),upBs=Infs(4),vals=zeros(4),dscIndices=[1,3],sos1Groups=[0,1])
 
 
@@ -41,7 +41,7 @@ for c in cns
     @assert OpenBB.get_numVariables(tmp) == 4
     @assert OpenBB.get_bounds(tmp) ==  ([1.],[1.])
     if tmp isa OpenBB.LinearConstraintSet
-        @assert OpenBB.get_sparsity(tmp) == ([1, 1], [1, 2])
+        @assert OpenBB.get_dependency(tmp) == [[1, 2]]
     end
 end
 
@@ -50,9 +50,9 @@ for o in obj
     tmp = sparse(tmp)
     @assert OpenBB.get_numVariables(tmp) == 4
     if tmp isa OpenBB.LinearObjective
-        @assert OpenBB.get_sparsity(tmp) == [1,2,3,4]
+        @assert OpenBB.get_dependency(tmp) == [1,2,3,4]
     elseif tmp isa OpenBB.QuadraticObjective
-        @assert  OpenBB.get_sparsity(tmp) == (([1, 2, 3, 4], [1, 2, 3, 4]), [1, 2, 3, 4])
+        @assert  OpenBB.get_dependency(tmp) == [1, 2, 3, 4]
     end
 end
 
@@ -63,18 +63,15 @@ for v in var
             tmp = copy(deepcopy(OpenBB.Problem(varSet=v,cnsSet=c,objFun=o)))
             tmp = sparse(tmp)
             @assert OpenBB.get_numVariables(tmp) == 4
-            @assert OpenBB.get_numDiscreteVariables(tmp) == 2
+            @assert OpenBB.get_numDiscrete(tmp) == 2
             @assert OpenBB.get_numConstraints(tmp) == 1
             @assert OpenBB.get_variableBounds(tmp) == OpenBB.get_bounds(tmp.varSet)
             @assert OpenBB.get_discreteIndices(tmp) == OpenBB.get_discreteIndices(tmp.varSet)
             @assert OpenBB.get_sos1Groups(tmp) == OpenBB.get_sos1Groups(tmp.varSet)
             @assert OpenBB.get_pseudoCosts(tmp) == OpenBB.get_pseudoCosts(tmp.varSet)
             @assert OpenBB.get_constraintBounds(tmp) == OpenBB.get_bounds(tmp.cnsSet)
-            @assert OpenBB.get_objective_sparsity(tmp) == OpenBB.get_sparsity(sparse(o))
-            @assert OpenBB.get_constraints_sparsity(tmp) == OpenBB.get_sparsity(sparse(c))
+            @assert OpenBB.get_objective_dependency(tmp) == OpenBB.get_dependency(o)
+            @assert OpenBB.get_constraints_dependency(tmp) == OpenBB.get_dependency(c)
         end
     end
 end
-
-
-println(" - problem definition fundamentals, ok")

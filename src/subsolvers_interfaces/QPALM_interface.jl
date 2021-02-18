@@ -3,32 +3,33 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: QPALM_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2020-02-28T16:47:53+01:00
+# @Last modified time: 2021-02-12T17:38:09+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 using QPALM
+const maxQPALMiterations = 20000
 
 ## Settings ##########################################################
 
 # structure used to hold the settings for QPALM
-mutable struct QPALMsettings <: AbstractSettings
+mutable struct QPALMsettings <: SubsolverSettings
 	max_iter::Int64
 	inner_max_iter::Int64
-	eps_abs::Float64
-	eps_rel::Float64
-	eps_abs_in::Float64
-	eps_rel_in::Float64
-	rho::Float64
-	eps_prim_inf::Float64
-	eps_dual_inf::Float64
-	theta::Float64
-	delta::Float64
-	sigma_max::Float64
+	eps_abs::Float
+	eps_rel::Float
+	eps_abs_in::Float
+	eps_rel_in::Float
+	rho::Float
+	eps_prim_inf::Float
+	eps_dual_inf::Float
+	theta::Float
+	delta::Float
+	sigma_max::Float
 	proximal::Bool
-	gamma_init::Float64
-	gamma_upd::Float64
-	gamma_max::Float64
+	gamma_init::Float
+	gamma_upd::Float
+	gamma_max::Float
 	scaling::Int64
 	nonconvex::Bool
 	verbose::Bool
@@ -36,27 +37,26 @@ mutable struct QPALMsettings <: AbstractSettings
 	warm_start::Bool
 	reset_newton_iter::Int64
 	enable_dual_termination::Bool
-	dual_objective_limit::Float64
-	time_limit::Float64
+	dual_objective_limit::Float
+	time_limit::Float
 end
 
-
-function QPALMsettings(;max_iter::Int64=10000,
+function QPALMsettings(;max_iter::Int64=maxQPALMiterations,
 						inner_max_iter::Int64=100,
-						eps_abs::Float64=1.0e-6,
-						eps_rel::Float64=1.0e-6,
-						eps_abs_in::Float64=1.0,
-						eps_rel_in::Float64=1.0,
-						rho::Float64=0.1,
-						eps_prim_inf::Float64=1.0e-6,
-						eps_dual_inf::Float64=1.0e-6,
-						theta::Float64=0.25,
-						delta::Float64=100.0,
-						sigma_max::Float64=1.0e9,
+						eps_abs::Float=1.0e-6,
+						eps_rel::Float=1.0e-6,
+						eps_abs_in::Float=1.0,
+						eps_rel_in::Float=1.0,
+						rho::Float=0.1,
+						eps_prim_inf::Float=1.0e-4,
+						eps_dual_inf::Float=1.0e-6,
+						theta::Float=0.25,
+						delta::Float=100.0,
+						sigma_max::Float=1.0e9,
 						proximal::Bool=true,
-						gamma_init::Float64=10.0,
-						gamma_upd::Float64=10.0,
-						gamma_max::Float64=1.0e7,
+						gamma_init::Float=10.0,
+						gamma_upd::Float=10.0,
+						gamma_max::Float=1.0e7,
 						scaling::Int64=2,
 						nonconvex::Bool=false,
 						verbose::Bool=false,
@@ -64,8 +64,8 @@ function QPALMsettings(;max_iter::Int64=10000,
 						warm_start::Bool=true,
 						reset_newton_iter::Int64=100,
 						enable_dual_termination::Bool=false,
-						dual_objective_limit::Float64=1.0e20,
-						time_limit::Float64=1.0e20)::QPALMsettings
+						dual_objective_limit::Float=1.0e20,
+						time_limit::Float=1.0e20)::QPALMsettings
 
 
 
@@ -77,11 +77,70 @@ function QPALMsettings(;max_iter::Int64=10000,
 end
 
 
+## Utility Functions ##########################################################
+
+# wrapper to get verbosity of each solver in the same way
+function get_verbosity(settings::QPALMsettings)::Bool
+	return settings.verbose
+end
+
+# wrapper to get primal tolerance of each solver in the same way
+function get_primalTolerance(settings::QPALMsettings)::Float
+	return settings.eps_prim_inf
+end
+
+# wrapper to get dual tolerance of each solver in the same way
+function get_dualTolerance(settings::QPALMsettings)::Float
+	return settings.eps_dual_inf
+end
+
+# wrapper to get iterations limit of each solver in the same way
+function get_iterationsLimit(settings::QPALMsettings)::Int
+	return settings.max_iter
+end
+
+# wrapper to get time limit of each solver in the same way
+function get_timeLimit(settings::QPALMsettings)::Float
+	return settings.time_limit
+end
+
+
+# wrapper to set verbosity of each solver in a consistent way
+function set_verbosity!(settings::QPALMsettings,verbose::Bool)::Nothing
+	settings.verbose = verbose
+	return
+end
+
+# wrapper to set primal tolerance of each solve in a consistent way
+function set_primalTolerance!(settings::QPALMsettings,tolerance::Float)::Nothing
+	settings.eps_prim_inf= tolerance
+	return
+end
+
+# wrapper to set dual tolerance of each solve in a consistent way
+function set_dualTolerance!(settings::QPALMsettings,tolerance::Float)::Nothing
+	settings.eps_dual_inf = tolerance
+	return
+end
+
+# wrapper to set the iteration limit of each solver in a consistent way
+function set_iterationsLimit!(settings::QPALMsettings,limit::Int)::Nothing
+	# set the appropriate setting to the value
+	settings.max_iter=limit
+	return
+end
+
+# wrapper to set the time limit of each solver in a consistent way
+function set_timeLimit!(settings::QPALMsettings,limit::Float)::Nothing
+	# set the appropriate setting to the value
+	settings.time_limit=limit
+	return
+end
 
 
 ## Workspace ##########################################################
 # structure used for storing data for QPALM solver
-mutable struct QPALMworkspace <: AbstractWorkspace
+mutable struct QPALMworkspace <: SubsolverWorkspace
     # objective
     problem::Problem
     # memory
@@ -93,22 +152,11 @@ end
 
 ## Setup & Update ##########################################################
 # this function creates an QPALM.Model representing the given CvxQproblem
-function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Float64=Inf,bb_timeLimit=Inf)::QPALMworkspace
+function setup(problem::Problem,settings::QPALMsettings;withPrecompilation::Bool=false,nodeType::Type=AbstractNode)::QPALMworkspace
 
     # check the problem
     @assert problem.objFun isa NullObjective || problem.objFun isa LinearObjective || problem.objFun isa QuadraticObjective
     @assert problem.cnsSet isa NullConstraintSet || problem.cnsSet isa LinearConstraintSet
-
-
-    # overwrite the qpalm settings depending on the branch and bound settings
-    settings.eps_prim_inf = min(settings.eps_prim_inf,bb_primalTolerance*1e-1)
-    if bb_timeLimit < Inf
-        if settings.timeLimit == 0.
-            settings.timeLimit = bb_timeLimit
-        else
-            settings.timeLimit = min(settings.timeLimit,bb_timeLimit)
-        end
-    end
 
     # reformat the settings
     settings_dict = Dict{Symbol,Any}()
@@ -117,8 +165,8 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(problem.objFun)
-    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(problem.cnsSet)
+    objFun = QuadraticObjective{SpMatrix{Float},Vector{Float}}(problem.objFun)
+    cnsSet = LinearConstraintSet{SpMatrix{Float}}(problem.cnsSet)
 
 
     # create the QPALMworkspace
@@ -131,7 +179,18 @@ function setup(problem::Problem,settings::QPALMsettings;bb_primalTolerance::Floa
                            settings_dict...)
     end
 
-    return QPALMworkspace(problem,model,settings,false)
+    #create the workspace
+	workspace = QPALMworkspace(problem,model,settings,false)
+
+	# precompile the main functions to be used according to the workspace created
+	if withPrecompilation
+		precompile(make_outdated!,(typeof(workspace),))
+		precompile(update!,(typeof(workspace),))
+		precompile(solve!,(nodeType,typeof(workspace)))
+	end
+
+
+	return workspace
 end
 
 # it marks the workspace as outdated
@@ -150,8 +209,8 @@ function update!(workspace::QPALMworkspace)::Nothing
     end
 
     # ensure type consistency
-    objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
-    cnsSet = LinearConstraintSet{SparseMatrixCSC{Float64,Int64}}(workspace.problem.cnsSet)
+    objFun = QuadraticObjective{SpMatrix{Float},Vector{Float}}(workspace.problem.objFun)
+    cnsSet = LinearConstraintSet{SpMatrix{Float}}(workspace.problem.cnsSet)
 
     # setup QPALM for the new problem
     QPALM.setup!(workspace.model;Q=sparse(objFun.Q),q=objFun.L,
@@ -166,18 +225,18 @@ function update!(workspace::QPALMworkspace)::Nothing
 end
 
 ## Solve ##########################################################
-function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
+function solve!(node::AbstractNode,workspace::QPALMworkspace;objUpperLimit::Float=Inf)::Tuple{Int8,Float}
 	# collect info on the problem
 	numVars = get_size(workspace.problem.varSet)
 	numCnss = get_size(workspace.problem.cnsSet)
-	withCuts = nnz(sparse(node.cuts.A)) > 0
+	withCuts = nnz(sparse(node.cutSet.A)) > 0
 
 	# check if local cuts are present
     if withCuts # there are some local cuts
 
         # construct a temporary problem definition (to accomodate the cuts)
         tmpProblem = deepcopy(workspace.problem)
-        append!(tmpProblem.cnsSet,LinearConstraintSet(node.cuts.A[[1],:],[node.cuts.loBs[1]],[node.cuts.upBs[1]]))
+        append!(tmpProblem.cnsSet,LinearConstraintSet(node.cutSet.A[[1],:],[node.cutSet.loBs[1]],[node.cutSet.upBs[1]]))
 		update_bounds!(tmpProblem.varSet,loBs=node.varLoBs,upBs=node.varUpBs)
 		update_bounds!(tmpProblem.cnsSet,collect(1:length(node.cnsLoBs)),loBs=node.cnsLoBs,upBs=node.cnsUpBs)
 
@@ -215,21 +274,30 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
-        node.objUpB = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
-        node.objLoB = node.objUpB - max(workspace.settings.eps_abs,workspace.settings.eps_rel*abs(node.objUpB))
-		node.reliable = true
+		oldObjLoB = node.objLoB
+		update_objBounds!(node,workspace.problem,workspace.settings.eps_prim_inf,10*workspace.settings.eps_dual_inf)
+		node.objLoB = max(node.objLoB,oldObjLoB) # avoid problems with lack of accuracy of the dual
 	elseif sol.info.status_val == -3
         status = 1 # "infeasible"
+		# update the primal info
         @. node.primal = @. min(max(sol.x,node.varLoBs),node.varUpBs)
+		# do not update the dual info because
+		# the old ones are still good
+		# and we cannot trust the new ones
+		if withCuts
+			@. node.cutDual = sol.y[numVars+numCnss+1:end]
+		end
+        node.objLoB = node.objUpB = Inf
+	elseif sol.info.status_val == 2 && workspace.settings.max_iter < maxQPALMiterations
+		status = 1 # solved
+		@. node.primal = min(max(sol.x,node.varLoBs),node.varUpBs)
         @. node.bndDual = sol.y[1:numVars]
         @. node.cnsDual = sol.y[numVars+1:numVars+numCnss]
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        node.objUpB = Inf
-        node.objLoB = Inf
-		node.reliable = true
+		update_objBounds!(node,workspace.problem,workspace.settings.eps_prim_inf,10*workspace.settings.eps_dual_inf)
+
     elseif sol.info.status_val in [2,3,4,-6,-2]
         status = 2 # "unreliable"
         @. node.primal = min(max(sol.x,node.varLoBs),node.varUpBs)
@@ -238,20 +306,16 @@ function solve!(node::BBnode,workspace::QPALMworkspace)::Tuple{Int8,Float64}
 		if withCuts
 			@. node.cutDual = sol.y[numVars+numCnss+1:end]
 		end
-        objFun = QuadraticObjective{SparseMatrixCSC{Float64,Int64},Array{Float64,1}}(workspace.problem.objFun)
-        node.objUpB = 1/2 * transpose(node.primal) * objFun.Q * node.primal + transpose(objFun.L) * node.primal
-        if node.objUpB < node.objLoB
-			#TODO: recopute the gap if possible
-            node.objLoB = -Inf
-			node.reliable = false
-        end
+		oldObjLoB = node.objLoB
+		update_objBounds!(node,workspace.problem,workspace.settings.eps_prim_inf,10*workspace.settings.eps_dual_inf)
+		node.objLoB = max(node.objLoB,oldObjLoB) # it is possible that the parent node solution was more successful
 		@warn "Inaccuracy in node sol, status: "*string(sol.info.status)*" (code: "*string(status)*")"
     elseif sol.info.status_val in [-7,-10]
         status = 3 # "error"
         @error "Subsover error, status: "*string(sol.info.status)*" (code: "*string(sol.info.status_val)*")"
     else
+		status = 3
         @error "Subsolver unknown status: "*string(sol.info.status)*"("*string(sol.info.status_val)*")"
-    end
-
+	end
     return (status, sol.info.run_time)
 end
