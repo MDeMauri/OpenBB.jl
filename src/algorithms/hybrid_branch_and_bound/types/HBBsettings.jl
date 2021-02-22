@@ -3,15 +3,15 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: HBBjl
 # @Last modified by:   massimo
-# @Last modified time: 2021-01-28T16:28:46+01:00
+# @Last modified time: 2021-02-22T15:17:39+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
 
 mutable struct HBBsettings <: AbstractSettings
 	# subsolvers settings
-	nlpSettings::SubsolverSettings
-	mipSettings::BBsettings
+	nlpSettings::SubsolverSettings						# settings to be passed to the NLP subsolver
+	mipSettings::BBsettings								# settings to be passed to the MIP subsolver
     # execution modifiers
     verbose::Bool                           			# print info during execution
     nlpProcesses::Int                       			# max number of processes for nlp

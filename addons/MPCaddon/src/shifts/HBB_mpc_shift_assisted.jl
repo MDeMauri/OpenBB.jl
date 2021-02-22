@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@protonmail.com
 # @Filename: HBB_mpc_shift_assisted.jl
 # @Last modified by:   massimo
-# @Last modified time: 2021-02-18T14:36:37+01:00
+# @Last modified time: 2021-02-22T17:08:55+01:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -46,7 +46,7 @@ function _mpc_shift!(workspace::HBBworkspace,shiftSteps::Int,shiftedMINLP::Probl
 	remove_variables!(tailConstraints,1:numVars-varShift-numStates-numAlgebraic)
 
 	# call normal shift
-	mpc_shift!(workspace,shiftSteps,tailCosts,tailConstraints,tailVariables,shiftedMINLP;
+	mpc_shift!(workspace,shiftSteps,tailCosts,tailConstraints,tailVariables;
 			   referenceSolution=referenceSolution,measuredState=measuredState,
 			   mode=mode,approximateBellmanConstant=approximateBellmanConstant,
 			   subsolverIterations=subsolverIterations,suppressErrors=suppressErrors)::Nothing
