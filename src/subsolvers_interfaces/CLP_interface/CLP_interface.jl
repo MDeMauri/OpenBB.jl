@@ -3,7 +3,7 @@
 # @Email:  massimo.demauri@gmail.com
 # @Filename: CLP_interface.jl
 # @Last modified by:   massimo
-# @Last modified time: 2021-05-26T18:23:48+02:00
+# @Last modified time: 2021-05-28T11:09:14+02:00
 # @License: LGPL-3.0
 # @Copyright: {{copyright}}
 
@@ -230,7 +230,7 @@ function solve!(node::BBnode,workspace::CLPworkspace;objUpperLimit::Float=Inf)::
 		node.cutDual .= -CCLP.get_row_price(_model)[numCnss+1:numCnss+numCuts]
 	end
 
-	status = 3 
+	status = -1
 	if CLPstatus == 0
 		status = 0 # solved
 		update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
@@ -240,22 +240,31 @@ function solve!(node::BBnode,workspace::CLPworkspace;objUpperLimit::Float=Inf)::
 	   node.objUpB = Inf
 	   node.objLoB = Inf
 	   node.reliable = true
-    elseif CLPstatus == 3 && (CCLP.is_iteration_limit_reached(_model) ||
-	   						  CLPtime >= workspace.settings.maximumSeconds ||
-	                          CCLP.is_dual_objective_limit_reached(_model))
-		status = 1 # solved
-		update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
-		reliable = true
-	elseif CLPstatus == 3
-		status = 2 # unreliable
-		update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
-		@warn "Inaccuracy in node sol, status code: "*string(CLPstatus)
-		node.reliable = false
+    elseif CLPstatus == 3
+		if CCLP.is_iteration_limit_reached(_model) || CLPtime >= workspace.settings.maximumSeconds
+			status = 2 # unreliable
+			@warn "CLP: Time or Iterations limit reached; Inaccuracy in node sol; Status code: "*string(CLPstatus)
+			oldObjLoB = node.objLoB
+			update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
+			node.objLoB = max(oldObjLoB,node.objLoB)
+		elseif CCLP.is_dual_objective_limit_reached(_model))
+			status = 0 # solved
+			oldObjLoB = node.objLoB
+			update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
+			node.objLoB = max(oldObjLoB,node.objLoB,objUpperLimit)
+		else
+			status = 2 # unreliable
+			oldObjLoB = node.objLoB
+			update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
+			node.objLoB = max(oldObjLoB,node.objLoB)
+			update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
+			@warn "CLP: Unknown Issue; Inaccuracy in node sol; Status code: "*string(CLPstatus)
    	elseif CLPstatus == 4
         status = 3 # "error"
         @error "Subsover error, status code: "*string(CLPstatus)
 	end
 
+	@assert 0<= status <= 3
     return (status,CLPtime)
 end
 
