@@ -247,7 +247,7 @@ function solve!(node::BBnode,workspace::CLPworkspace;objUpperLimit::Float=Inf)::
 			oldObjLoB = node.objLoB
 			update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
 			node.objLoB = max(oldObjLoB,node.objLoB)
-		elseif CCLP.is_dual_objective_limit_reached(_model))
+		elseif CCLP.is_dual_objective_limit_reached(_model)
 			status = 0 # solved
 			oldObjLoB = node.objLoB
 			update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
@@ -259,6 +259,7 @@ function solve!(node::BBnode,workspace::CLPworkspace;objUpperLimit::Float=Inf)::
 			node.objLoB = max(oldObjLoB,node.objLoB)
 			update_objBounds!(node,workspace.problem,10*workspace.settings.primalTolerance,10*workspace.settings.dualTolerance)
 			@warn "CLP: Unknown Issue; Inaccuracy in node sol; Status code: "*string(CLPstatus)
+        end
    	elseif CLPstatus == 4
         status = 3 # "error"
         @error "Subsover error, status code: "*string(CLPstatus)
